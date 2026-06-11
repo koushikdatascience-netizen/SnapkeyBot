@@ -73,12 +73,15 @@
       <span class="live-session-status" id="live-session-status">Ready to connect</span>
       <button class="ghost" onclick="closeLiveAgent()">Close</button>
     </div>
-    <div class="live-agent-presence" id="live-agent-presence" data-state="idle">
-      <div class="character-halo"><div class="character-core"><span>S</span></div></div>
-      <p class="kicker">SNAPKEY LIVE</p>
-      <h2 id="live-agent-title">Let’s talk.</h2>
-      <p id="live-caption">A continuous, interruptible voice conversation.</p>
-      <div class="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="live-agent-body">
+      <div class="live-agent-presence" id="live-agent-presence" data-state="idle">
+        <div class="character-halo"><div class="character-core"><span>S</span></div></div>
+        <p class="kicker">SNAPKEY LIVE</p>
+        <h2 id="live-agent-title">Let's talk.</h2>
+        <p id="live-caption">A continuous, interruptible voice conversation.</p>
+        <div class="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <aside class="live-workspace hidden" id="live-workspace"></aside>
     </div>
     <div class="live-agent-controls">
       <button class="live-start" id="live-start" onclick="startLiveConversation()">Start conversation</button>

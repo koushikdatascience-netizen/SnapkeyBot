@@ -124,6 +124,8 @@ ELEVENLABS_AGENT_ID=agent_your_agent_id
 3. In the ElevenLabs Agent dashboard, add these client tools. Their names must match exactly:
 
 ```text
+show_workspace
+request_confirmation
 show_email_workspace
 show_product_workspace
 show_video_workspace
@@ -131,6 +133,29 @@ show_progress_workspace
 show_brief_workspace
 request_human_operator
 ```
+
+For the fastest setup, only add `show_workspace` and `request_confirmation`. The other tools remain supported for more specialized configurations.
+
+`show_workspace` parameters:
+
+```text
+type     Required string, LLM Prompt
+title    Optional string, LLM Prompt
+summary  Optional string, LLM Prompt
+details  Optional string, LLM Prompt
+```
+
+Use `type` values such as `calendar`, `gmail`, `retail`, `inventory`, `video`, or `brief`. Put events, email details, retail metrics, or other display data in `details`, separated with semicolons.
+
+`request_confirmation` parameters:
+
+```text
+title    Required string, LLM Prompt
+summary  Required string, LLM Prompt
+action   Optional string, LLM Prompt
+```
+
+The confirmation tool pauses until the user selects **Confirm** or **Cancel**, then reports the decision to the live agent. It does not itself perform the external action. Real Gmail sending, calendar creation, inventory edits, and financial actions require authenticated server tools.
 
 Suggested parameters:
 

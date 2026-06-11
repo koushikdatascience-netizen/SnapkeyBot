@@ -37,6 +37,13 @@ def test_health_and_ui_are_served(client):
     assert "What can we move" in response.text
 
 
+def test_live_agent_bundle_includes_universal_workspace_tools(client):
+    response = client.get("/static/live-agent.js")
+    assert response.status_code == 200
+    assert "show_workspace" in response.text
+    assert "request_confirmation" in response.text
+
+
 def test_tenant_cannot_read_another_tenants_task(client):
     first = client.post(
         "/api/auth/signup", json={"email": "first@example.com", "password": "password123"}

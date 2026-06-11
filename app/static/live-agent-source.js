@@ -26,11 +26,13 @@ function setConnected(connected) {
 
 function showWorkspace(parameters = {}) {
   const type = parameters.type || "brief";
-  window.SnapkeyUI.renderPresentation({ type, ...parameters }, []);
+  renderLiveWorkspace({ type, ...parameters });
   return `${type} workspace displayed`;
 }
 
 const clientTools = {
+  show_workspace: parameters => showWorkspace(parameters),
+  request_confirmation: parameters => requestConfirmation(parameters),
   show_email_workspace: parameters => showWorkspace({ type: "email", ...parameters }),
   show_product_workspace: parameters => showWorkspace({ type: "products", ...parameters }),
   show_video_workspace: parameters => showWorkspace({ type: "video", ...parameters }),
@@ -41,6 +43,135 @@ const clientTools = {
     return "The request is prepared in the text workspace for the user to send.";
   },
 };
+
+function parseDetails(value) {
+  if (Array.isArray(value)) return value.map(String);
+  if (!value) return [];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map(item => typeof item === "string" ? item : JSON.stringify(item));
+      }
+      if (parsed && typeof parsed === "object") {
+        return Object.entries(parsed).map(([key, item]) => `${key}: ${item}`);
+      }
+    } catch {
+      return value.split(/\n|;/).map(item => item.trim()).filter(Boolean);
+    }
+  }
+  return [];
+}
+
+function renderLiveWorkspace(data) {
+  const workspace = document.querySelector("#live-workspace");
+  workspace.className = `live-workspace ${data.type || "brief"}`;
+  workspace.replaceChildren();
+
+  const header = document.createElement("div");
+  header.className = "live-workspace-header";
+  const label = document.createElement("small");
+  label.textContent = `${(data.type || "brief").toUpperCase()} WORKSPACE`;
+  const title = document.createElement("h3");
+  title.textContent = data.title || liveWorkspaceTitle(data.type);
+  const summary = document.createElement("p");
+  summary.textContent = data.summary || data.body || "Ready while we continue talking.";
+  header.append(label, title, summary);
+  workspace.append(header);
+
+  if (data.type === "calendar") renderCalendar(workspace, data);
+  else if (data.type === "email" || data.type === "gmail") renderLiveEmail(workspace, data);
+  else if (["retail", "bar", "inventory"].includes(data.type)) renderRetail(workspace, data);
+  else renderDetailList(workspace, parseDetails(data.details || data.items || data.steps));
+}
+
+function liveWorkspaceTitle(type) {
+  return {
+    calendar: "Calendar and meetings",
+    email: "Gmail workspace",
+    gmail: "Gmail workspace",
+    retail: "Madhushala operations",
+    bar: "Madhushala operations",
+    inventory: "Inventory overview",
+  }[type] || "Live workspace";
+}
+
+function renderCalendar(workspace, data) {
+  const panel = document.createElement("div");
+  panel.className = "live-calendar";
+  const events = parseDetails(data.events || data.details);
+  ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach((day, index) => {
+    const card = document.createElement("article");
+    card.innerHTML = `<small>${day}</small><strong>${index + 12}</strong><span></span>`;
+    card.querySelector("span").textContent = events[index] || (index === 2 ? "Available" : "No events");
+    panel.append(card);
+  });
+  workspace.append(panel);
+}
+
+function renderLiveEmail(workspace, data) {
+  const panel = document.createElement("div");
+  panel.className = "live-email";
+  panel.innerHTML = "<span></span><h4></h4><p></p><small></small>";
+  panel.querySelector("span").textContent = data.from || "Gmail";
+  panel.querySelector("h4").textContent = data.subject || data.title || "Email workspace";
+  panel.querySelector("p").textContent = data.body || data.summary || "Ready to search, summarize, or prepare a draft.";
+  panel.querySelector("small").textContent = data.status || "External actions require confirmation";
+  workspace.append(panel);
+}
+
+function renderRetail(workspace, data) {
+  const metrics = parseDetails(data.metrics || data.details);
+  const panel = document.createElement("div");
+  panel.className = "live-retail";
+  const defaults = ["Today's sales: Ready", "Low stock: Review", "Open orders: Ready", "Supplier tasks: Ready"];
+  (metrics.length ? metrics : defaults).slice(0, 6).forEach((metric, index) => {
+    const card = document.createElement("article");
+    const [name, value = "Ready"] = metric.split(":");
+    card.innerHTML = "<small></small><strong></strong><i></i>";
+    card.querySelector("small").textContent = name;
+    card.querySelector("strong").textContent = value.trim();
+    card.querySelector("i").style.setProperty("--bar", `${55 + (index % 4) * 12}%`);
+    panel.append(card);
+  });
+  workspace.append(panel);
+}
+
+function renderDetailList(workspace, details) {
+  const panel = document.createElement("div");
+  panel.className = "live-detail-list";
+  (details.length ? details : ["Workspace ready"]).slice(0, 8).forEach(detail => {
+    const item = document.createElement("span");
+    item.textContent = detail;
+    panel.append(item);
+  });
+  workspace.append(panel);
+}
+
+function requestConfirmation(parameters = {}) {
+  return new Promise(resolve => {
+    const workspace = document.querySelector("#live-workspace");
+    workspace.className = "live-workspace confirmation";
+    workspace.replaceChildren();
+    const panel = document.createElement("div");
+    panel.className = "live-confirmation";
+    panel.innerHTML = "<small>CONFIRM BEFORE ACTION</small><h3></h3><p></p><div><button class='approve'>Confirm</button><button>Cancel</button></div>";
+    panel.querySelector("h3").textContent = parameters.title || parameters.action || "Approve this action?";
+    panel.querySelector("p").textContent = parameters.summary || "Snapkey will continue only after your approval.";
+    const buttons = panel.querySelectorAll("button");
+    buttons[0].onclick = () => {
+      buttons.forEach(button => button.disabled = true);
+      buttons[0].textContent = "Confirmed";
+      resolve("The user confirmed the action.");
+    };
+    buttons[1].onclick = () => {
+      buttons.forEach(button => button.disabled = true);
+      buttons[1].textContent = "Cancelled";
+      resolve("The user cancelled the action.");
+    };
+    workspace.append(panel);
+  });
+}
 
 window.startLiveConversation = async function startLiveConversation() {
   if (conversation) return;

@@ -125,7 +125,9 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .live-agent-top .brand { color: white; }
 .live-agent-top .ghost { color: #aaa; }
 .live-session-status { margin-left: auto; color: #bdbdbd; font-size: 11px; font-weight: 700; }
-.live-agent-presence { position: relative; z-index: 2; align-self: center; display: grid; justify-items: center; text-align: center; }
+.live-agent-body { position: relative; z-index: 2; align-self: stretch; display: grid; grid-template-columns: minmax(340px, .85fr) minmax(0, 1.15fr); gap: 26px; align-items: center; width: min(1280px, calc(100% - 44px)); min-height: 0; margin: auto; }
+.live-agent-body:has(.live-workspace.hidden) { grid-template-columns: 1fr; }
+.live-agent-presence { position: relative; z-index: 2; align-self: center; display: grid; justify-items: center; text-align: center; transition: .45s ease; }
 .live-agent-presence h2 { margin-top: 4px; font-size: clamp(44px, 8vw, 82px); }
 .live-agent-presence > p:not(.kicker) { max-width: 620px; min-height: 48px; margin: 14px 20px; color: #aaa; font-size: 15px; line-height: 1.55; }
 .character-halo { position: relative; display: grid; place-items: center; width: min(34vw, 290px); height: min(34vw, 290px); margin-bottom: 10px; border-radius: 50%; background: conic-gradient(from 0deg, #8268ff44, #4bc8ed33, #5fd29a44, #f6c94544, #ff769644, #8268ff44); box-shadow: 0 0 90px #8268ff33; animation: orbTurn 10s linear infinite; transition: .4s ease; }
@@ -145,6 +147,36 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .round-control { width: 68px; height: 68px; border: 1px solid #ffffff20; border-radius: 50%; color: white; background: #ffffff12; font-size: 10px; font-weight: 750; backdrop-filter: blur(16px); }
 .round-control.end { background: #d94d5b; border-color: #d94d5b; }
 .live-note { color: #777; }
+.live-workspace { position: relative; z-index: 2; overflow: auto; max-height: min(66vh, 650px); padding: 24px; color: #1d1d1f; background: #f8f8f8f2; border: 1px solid #ffffff30; border-radius: 28px; box-shadow: 0 30px 90px #0008; backdrop-filter: blur(24px); animation: stageIn .4s ease-out; }
+.live-workspace-header small { color: #8268ff; font-size: 9px; font-weight: 850; letter-spacing: .16em; }
+.live-workspace-header h3 { margin: 7px 0; font-size: clamp(28px, 4vw, 46px); letter-spacing: -.055em; }
+.live-workspace-header p { margin: 0 0 22px; color: #666; line-height: 1.5; }
+.live-calendar { display: grid; grid-template-columns: repeat(7, minmax(78px, 1fr)); gap: 7px; }
+.live-calendar article { display: grid; gap: 6px; min-height: 120px; padding: 12px 9px; background: white; border: 1px solid #ececec; border-radius: 14px; }
+.live-calendar article:nth-child(3) { border-color: #8268ff; box-shadow: 0 8px 24px #8268ff22; }
+.live-calendar small { color: #888; font-size: 9px; font-weight: 800; }
+.live-calendar strong { font-size: 22px; }
+.live-calendar span { align-self: end; color: #6c57d7; font-size: 9px; line-height: 1.35; }
+.live-email { padding: 20px; background: white; border: 1px solid #e8e8e8; border-radius: 18px; }
+.live-email > span { color: #8268ff; font-size: 10px; font-weight: 800; }
+.live-email h4 { margin: 16px 0 8px; font-size: 25px; letter-spacing: -.04em; }
+.live-email p { color: #555; white-space: pre-wrap; line-height: 1.6; }
+.live-email small { display: inline-block; margin-top: 12px; padding: 6px 8px; color: #815d00; background: #fff3b7; border-radius: 8px; font-weight: 750; }
+.live-retail { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.live-retail article { position: relative; overflow: hidden; min-height: 120px; padding: 16px; background: white; border: 1px solid #ececec; border-radius: 17px; }
+.live-retail small { display: block; color: #777; text-transform: capitalize; }
+.live-retail strong { display: block; margin-top: 15px; font-size: 22px; }
+.live-retail i { position: absolute; inset: auto 0 0; width: var(--bar); height: 4px; background: linear-gradient(90deg, #8268ff, #5fd29a); }
+.live-detail-list { display: grid; gap: 8px; }
+.live-detail-list span { padding: 13px 14px; background: white; border: 1px solid #e8e8e8; border-radius: 12px; font-size: 12px; }
+.live-confirmation { padding: 12px; }
+.live-confirmation small { color: #b07500; font-size: 9px; font-weight: 850; letter-spacing: .16em; }
+.live-confirmation h3 { margin: 12px 0 8px; font-size: clamp(30px, 4vw, 48px); letter-spacing: -.055em; }
+.live-confirmation p { color: #666; line-height: 1.6; }
+.live-confirmation div { display: flex; gap: 10px; margin-top: 22px; }
+.live-confirmation button { padding: 12px 17px; border: 0; border-radius: 11px; background: #e9e9e9; font-weight: 800; }
+.live-confirmation button.approve { color: white; background: #171717; }
+.live-confirmation button:disabled { opacity: .7; }
 @keyframes morph { to { transform: rotate(120deg) scale(1.18); border-radius: 65% 35% 42% 58%; } }
 @keyframes float { 50% { transform: translateY(-7px) rotate(4deg); } }
 @keyframes blink { 0%, 60%, 100% { opacity: .2; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
@@ -169,6 +201,9 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
   .metric-row { grid-template-columns: 1fr; }
   .live-agent-top { padding: 14px; }
   .live-session-status { display: none; }
+  .live-agent-body { display: block; width: calc(100% - 20px); overflow: auto; }
   .character-halo { width: 210px; height: 210px; }
   .live-agent-presence h2 { font-size: 46px; }
+  .live-workspace { max-height: none; margin: 18px 0 120px; padding: 17px; border-radius: 20px; }
+  .live-calendar { grid-template-columns: repeat(3, 1fr); }
 }
