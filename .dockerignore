@@ -9,4 +9,5 @@ pytest-cache-files-*
 *.db-*
 *.egg-info
 *.log
+uploads
 tests

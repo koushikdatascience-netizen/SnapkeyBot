@@ -30,6 +30,13 @@ def main() -> None:
     if not result.get("ok"):
         raise SystemExit(result.get("description", "Unable to configure Telegram webhook"))
     print(result.get("description", "Webhook configured"))
+    info_response = httpx.get(f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=30)
+    info_response.raise_for_status()
+    info = info_response.json().get("result", {})
+    print(f"Webhook URL: {info.get('url') or '(not set)'}")
+    print(f"Pending updates: {info.get('pending_update_count', 0)}")
+    if info.get("last_error_message"):
+        print(f"Last Telegram error: {info['last_error_message']}")
 
 
 if __name__ == "__main__":

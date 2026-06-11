@@ -46,6 +46,16 @@ py -3.12 scripts/setup_telegram_webhook.py
 
 During the demo, each client message appears in Telegram. **Reply directly to that Telegram message** and the response will appear in the matching browser session.
 
+If the live site shows `Setup required` or Telegram receives nothing:
+
+1. Confirm all three Telegram environment variables exist on the Render web service.
+2. Confirm the latest Render deploy completed successfully.
+3. Run `scripts/setup_telegram_webhook.py` again using the live Render URL.
+4. Check the script output for `Last Telegram error`.
+5. In Telegram, reply directly to the bot's tagged request rather than sending a new standalone message.
+
+The concierge supports browser text, images, voice recordings, and files. Telegram operator replies may also include text, images, voice, audio, video, or documents. Demo attachments are stored on the web service filesystem and can disappear after a Render restart; use object storage before production.
+
 ## Local Development
 
 ```powershell

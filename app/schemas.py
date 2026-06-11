@@ -35,3 +35,4 @@ class TaskResponse(BaseModel):
 
 class AppConfigResponse(BaseModel):
     concierge_mode: bool
+    concierge_ready: bool

@@ -1,5 +1,10 @@
 let token = localStorage.getItem("token");
 let conciergeMode = false;
+let conciergeReady = false;
+let selectedAttachment = null;
+let recorder = null;
+let recordingChunks = [];
+
 initialize();
 
 async function initialize() {
@@ -8,96 +13,241 @@ async function initialize() {
 }
 
 async function loadConfig() {
-  const response = await fetch("/api/config");
-  const config = await response.json();
-  conciergeMode = config.concierge_mode;
-  if (conciergeMode) {
-    document.querySelector("#preview-badge").classList.remove("hidden");
-    document.querySelector("#welcome-message").textContent = "This preview is supported by a human concierge. Ask anything about the product.";
+  try {
+    const response = await fetch("/api/config");
+    const config = await response.json();
+    conciergeMode = config.concierge_mode;
+    conciergeReady = config.concierge_ready;
+    setConnectionStatus(conciergeReady ? "Concierge online" : "Setup required", conciergeReady);
+    document.querySelector("#connection-warning").classList.toggle("hidden", conciergeReady);
+  } catch {
+    setConnectionStatus("Service unavailable", false);
   }
 }
 
-function addMessage(label, text, className = "") {
-  const item = document.createElement("p");
-  item.className = className;
-  const heading = document.createElement("strong");
-  heading.textContent = `${label}: `;
-  item.append(heading, document.createTextNode(text));
-  messages.append(item);
-  messages.scrollTop = messages.scrollHeight;
-  return item;
+function setConnectionStatus(text, ready) {
+  const status = document.querySelector("#connection-status");
+  status.lastChild.textContent = ` ${text}`;
+  status.classList.toggle("offline", !ready);
 }
 
 async function api(path, options = {}) {
-  options.headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  options.headers = { ...(options.headers || {}) };
+  if (!(options.body instanceof FormData)) options.headers["Content-Type"] = "application/json";
   if (token) options.headers.Authorization = `Bearer ${token}`;
   const response = await fetch(`/api${path}`, options);
-  const body = await response.json();
+  const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.detail || "Request failed");
   return body;
 }
 
 async function authenticate(action) {
+  const error = document.querySelector("#auth-error");
+  error.classList.add("hidden");
   try {
-    const body = await api(`/auth/${action}`, { method: "POST", body: JSON.stringify({ email: email.value, password: password.value }) });
+    const body = await api(`/auth/${action}`, {
+      method: "POST",
+      body: JSON.stringify({ email: email.value, password: password.value }),
+    });
     token = body.access_token;
     localStorage.setItem("token", token);
     showWorkspace();
-  } catch (error) { alert(error.message); }
+  } catch (reason) {
+    error.textContent = reason.message;
+    error.classList.remove("hidden");
+  }
 }
 
 function showWorkspace() {
   document.querySelector("#auth").classList.add("hidden");
   document.querySelector("#workspace").classList.remove("hidden");
-  if (conciergeMode) {
-    tools.closest(".panel").classList.add("concierge");
-  } else {
-    loadTools();
+  document.querySelector("#logout-button").classList.remove("hidden");
+  document.querySelector("#prompt").focus();
+}
+
+function logout() {
+  localStorage.removeItem("token");
+  location.reload();
+}
+
+function hideIntro() {
+  document.querySelector("#intro").classList.add("compact-intro");
+}
+
+function createMessage(role, text, pending = false) {
+  hideIntro();
+  const row = document.createElement("article");
+  row.className = `message ${role}${pending ? " pending" : ""}`;
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = role === "user" ? "You" : "S";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  const content = document.createElement("p");
+  content.textContent = text;
+  bubble.append(content);
+  row.append(avatar, bubble);
+  messages.append(row);
+  row.scrollIntoView({ behavior: "smooth", block: "end" });
+  return row;
+}
+
+function createPending() {
+  const row = createMessage("assistant", "Connecting your request with the concierge", true);
+  const dots = document.createElement("div");
+  dots.className = "thinking";
+  dots.append(document.createElement("i"), document.createElement("i"), document.createElement("i"));
+  row.querySelector(".bubble").append(dots);
+  return row;
+}
+
+function selectFile(event) {
+  const file = event.target.files[0];
+  if (file) setAttachment(file);
+}
+
+function setAttachment(file) {
+  selectedAttachment = file;
+  const preview = document.querySelector("#attachment-preview");
+  preview.replaceChildren();
+  const detail = document.createElement("div");
+  detail.innerHTML = `<strong></strong><span></span>`;
+  detail.querySelector("strong").textContent = file.name;
+  detail.querySelector("span").textContent = `${file.type || "file"} · ${formatBytes(file.size)}`;
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.textContent = "Remove";
+  remove.onclick = clearAttachment;
+  preview.append(detail, remove);
+  preview.classList.remove("hidden");
+}
+
+function clearAttachment() {
+  selectedAttachment = null;
+  document.querySelector("#file-input").value = "";
+  document.querySelector("#attachment-preview").classList.add("hidden");
+}
+
+async function toggleRecording() {
+  const button = document.querySelector("#mic-button");
+  if (recorder?.state === "recording") {
+    recorder.stop();
+    button.classList.remove("recording");
+    return;
   }
-}
-
-async function loadTools() {
-  const items = await api("/tools");
-  tools.innerHTML = items.map(tool => `<article class="tool"><strong>${tool.name}</strong><p>${tool.description}</p><small>${tool.risk} risk | ${tool.required_permission}</small><button class="${tool.connected ? "quiet" : ""}" onclick='connectTool(${JSON.stringify(tool.name)}, ${JSON.stringify(tool.credential_fields)})'>${tool.connected ? "Reconnect" : "Connect"}</button></article>`).join("");
-}
-
-async function connectTool(name, credentialFields = []) {
-  const credentials = {};
-  for (const field of credentialFields) {
-    const value = window.prompt(`Enter ${field} for ${name}. It will be encrypted before storage.`);
-    if (!value) return;
-    credentials[field] = value;
-  }
-  await api(`/tools/${name}`, { method: "PUT", body: JSON.stringify({ credentials, permissions: [] }) });
-  await loadTools();
-}
-
-async function sendPrompt() {
-  const text = prompt.value.trim();
-  if (!text) return;
-  addMessage("You", text);
-  prompt.value = "";
   try {
-    const task = await api("/chat", { method: "POST", body: JSON.stringify({ prompt: text }) });
-    const pending = addMessage("Snapkey", conciergeMode ? "Your concierge is reviewing this now..." : "Working...", "pending");
-    pollTask(task.id, pending);
-  } catch (error) { addMessage("Error", error.message); }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordingChunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = event => recordingChunks.push(event.data);
+    recorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      const blob = new Blob(recordingChunks, { type: recorder.mimeType || "audio/webm" });
+      setAttachment(new File([blob], `snapkey-voice-${Date.now()}.webm`, { type: blob.type }));
+    };
+    recorder.start();
+    button.classList.add("recording");
+  } catch {
+    createMessage("assistant", "Microphone access was not available. You can attach an audio file instead.");
+  }
 }
 
-async function pollTask(id, pending) {
+async function sendPrompt(event) {
+  event.preventDefault();
+  const textarea = document.querySelector("#prompt");
+  const text = textarea.value.trim();
+  if (!text && !selectedAttachment) return;
+  const attachment = selectedAttachment;
+  createMessage("user", text || `Shared ${attachment.name}`);
+  if (attachment) addLocalAttachment(messages.lastElementChild.querySelector(".bubble"), attachment);
+  textarea.value = "";
+  resizeComposer();
+  clearAttachment();
+  const pending = createPending();
+  const form = new FormData();
+  form.append("prompt", text);
+  if (attachment) form.append("attachment", attachment);
+  try {
+    const task = await api("/chat", { method: "POST", body: form });
+    pollTask(task.id, pending, 0);
+  } catch (reason) {
+    pending.remove();
+    createMessage("assistant", reason.message);
+  }
+}
+
+async function pollTask(id, pending, attempts) {
   try {
     const task = await api(`/chat/tasks/${id}`);
     if (task.status === "succeeded") {
-      pending?.remove();
-      addMessage("Snapkey", task.result.message);
+      pending.remove();
+      const row = createMessage("assistant", task.result.message);
+      for (const attachment of task.result.attachments || []) {
+        await addRemoteAttachment(row.querySelector(".bubble"), attachment);
+      }
     } else if (task.status === "failed") {
-      pending?.remove();
-      addMessage("Failed", task.error);
+      pending.remove();
+      createMessage("assistant", task.error);
     } else {
-      setTimeout(() => pollTask(id, pending), 1000);
+      if (attempts === 20) pending.querySelector("p").textContent = "Your concierge has the request and is preparing a response";
+      if (attempts === 60) pending.querySelector("p").textContent = "Still working on it. You can keep this page open";
+      setTimeout(() => pollTask(id, pending, attempts + 1), 1000);
     }
-  } catch (error) {
-    pending?.remove();
-    addMessage("Error", error.message);
+  } catch (reason) {
+    pending.remove();
+    createMessage("assistant", reason.message);
   }
+}
+
+function addLocalAttachment(container, file) {
+  const url = URL.createObjectURL(file);
+  renderAttachment(container, file.name, file.type, url);
+}
+
+async function addRemoteAttachment(container, attachment) {
+  const response = await fetch(attachment.url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) return;
+  const url = URL.createObjectURL(await response.blob());
+  renderAttachment(container, attachment.name, attachment.content_type, url);
+}
+
+function renderAttachment(container, name, type, url) {
+  if (type.startsWith("image/")) {
+    const image = document.createElement("img");
+    image.className = "message-image";
+    image.src = url;
+    image.alt = name;
+    container.append(image);
+  } else if (type.startsWith("audio/")) {
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.src = url;
+    container.append(audio);
+  } else {
+    const link = document.createElement("a");
+    link.className = "file-card";
+    link.href = url;
+    link.download = name;
+    link.textContent = name;
+    container.append(link);
+  }
+}
+
+function handleComposerKey(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    document.querySelector("#composer").requestSubmit();
+  }
+}
+
+function resizeComposer() {
+  const textarea = document.querySelector("#prompt");
+  textarea.style.height = "auto";
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1048576).toFixed(1)} MB`;
 }

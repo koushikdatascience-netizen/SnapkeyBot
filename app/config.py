@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_operator_chat_id: str = ""
     telegram_webhook_secret: str = ""
+    upload_dir: str = "uploads"
+    max_upload_bytes: int = 15_000_000
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -9,6 +9,7 @@ from app.api import auth, chat, operator, tools
 from app.config import get_settings
 from app.database import create_tables
 from app.schemas import AppConfigResponse
+from app.services.telegram import telegram_webhook_ready
 
 
 @asynccontextmanager
@@ -34,7 +35,11 @@ async def health() -> dict[str, str]:
 
 @app.get("/api/config", response_model=AppConfigResponse)
 async def app_config() -> AppConfigResponse:
-    return AppConfigResponse(concierge_mode=get_settings().concierge_mode)
+    settings = get_settings()
+    return AppConfigResponse(
+        concierge_mode=settings.concierge_mode,
+        concierge_ready=await telegram_webhook_ready() if settings.concierge_mode else True,
+    )
 
 
 @app.get("/", include_in_schema=False)

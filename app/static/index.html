@@ -3,29 +3,61 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Snapkey Assistant</title>
+  <meta name="theme-color" content="#ffffff">
+  <title>Snapkey</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <main>
-    <section class="hero">
-      <p class="eyebrow">SNAPKEY ASSISTANT</p>
-      <h1>Your tools, directed by one agent.</h1>
-      <p>Connect capabilities, give a command, and follow every execution.</p>
-      <p class="preview hidden" id="preview-badge">Human-assisted concierge preview</p>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-mark">S</span>
+      <span>Snapkey</span>
+    </a>
+    <span class="status" id="connection-status"><i></i> Connecting</span>
+    <button class="ghost hidden" id="logout-button" onclick="logout()">Log out</button>
+  </header>
+
+  <main class="shell">
+    <section class="auth-card" id="auth">
+      <div class="aura compact"><span></span><span></span><span></span></div>
+      <p class="kicker">HUMAN-ASSISTED PREVIEW</p>
+      <h1>Meet your ideas<br>with momentum.</h1>
+      <p class="muted">Sign in to start a live Snapkey concierge conversation.</p>
+      <label>Email<input id="email" type="email" placeholder="you@company.com" autocomplete="email"></label>
+      <label>Password<input id="password" type="password" placeholder="8+ characters" autocomplete="current-password"></label>
+      <div class="auth-actions">
+        <button onclick="authenticate('signup')">Create account</button>
+        <button class="secondary" onclick="authenticate('login')">Log in</button>
+      </div>
+      <p class="form-error hidden" id="auth-error"></p>
     </section>
-    <section class="panel" id="auth">
-      <h2>Get started</h2>
-      <input id="email" type="email" placeholder="you@example.com">
-      <input id="password" type="password" placeholder="Password (8+ characters)">
-      <div class="actions"><button onclick="authenticate('signup')">Sign up</button><button class="quiet" onclick="authenticate('login')">Log in</button></div>
-    </section>
-    <section class="panel hidden" id="workspace">
-      <div class="row"><h2>Connected tools</h2><button class="quiet" onclick="loadTools()">Refresh</button></div>
-      <div id="tools" class="tools"></div>
-      <h2>Command</h2>
-      <div id="messages" class="messages"><p id="welcome-message">Try <code>calculate 20 * 4</code> after connecting Calculator.</p></div>
-      <div class="composer"><input id="prompt" placeholder="What should your agent do?"><button onclick="sendPrompt()">Run</button></div>
+
+    <section class="chat hidden" id="workspace">
+      <div class="intro" id="intro">
+        <div class="aura"><span></span><span></span><span></span></div>
+        <p class="kicker">SNAPKEY CONCIERGE</p>
+        <h2>What can we move<br>forward today?</h2>
+        <p>Share a question, image, voice note, or file. A live concierge is here to help.</p>
+      </div>
+      <div class="messages" id="messages" aria-live="polite"></div>
+      <div class="connection-warning hidden" id="connection-warning">
+        Telegram is not fully configured. Ask the operator to check the Render environment variables and webhook.
+      </div>
+      <div class="attachment-preview hidden" id="attachment-preview"></div>
+      <form class="composer" id="composer" onsubmit="sendPrompt(event)">
+        <input class="hidden" id="file-input" type="file" onchange="selectFile(event)">
+        <button class="icon-button" type="button" aria-label="Attach a file" onclick="document.querySelector('#file-input').click()">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <textarea id="prompt" rows="1" placeholder="Message Snapkey" onkeydown="handleComposerKey(event)" oninput="resizeComposer()"></textarea>
+        <button class="icon-button" id="mic-button" type="button" aria-label="Record voice note" onclick="toggleRecording()">
+          <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11v1a7 7 0 0 1-14 0v-1M12 19v3"/></svg>
+        </button>
+        <button class="send-button" type="submit" aria-label="Send message">
+          <svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
+        </button>
+      </form>
+      <p class="privacy-note">Human-assisted preview. Avoid sharing sensitive information.</p>
     </section>
   </main>
   <script src="/static/app.js"></script>
