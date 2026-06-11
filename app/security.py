@@ -34,9 +34,31 @@ def create_access_token(user_id: uuid.UUID) -> str:
     return jwt.encode({"sub": str(user_id), "exp": expires}, settings.jwt_secret, algorithm="HS256")
 
 
+def create_purpose_token(user_id: uuid.UUID, purpose: str, minutes: int = 15) -> str:
+    expires = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    return jwt.encode(
+        {"sub": str(user_id), "purpose": purpose, "exp": expires},
+        settings.jwt_secret,
+        algorithm="HS256",
+    )
+
+
+def decode_purpose_token(token: str, purpose: str) -> uuid.UUID:
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+        if payload.get("purpose") != purpose:
+            raise ValueError("Invalid token purpose")
+        return uuid.UUID(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError) as exc:
+        raise ValueError("Invalid token") from exc
+
+
 def decode_access_token(token: str) -> uuid.UUID:
     try:
-        return uuid.UUID(jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])["sub"])
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+        if payload.get("purpose"):
+            raise ValueError("Purpose token cannot be used as an access token")
+        return uuid.UUID(payload["sub"])
     except (jwt.PyJWTError, KeyError, ValueError) as exc:
         raise ValueError("Invalid token") from exc
 

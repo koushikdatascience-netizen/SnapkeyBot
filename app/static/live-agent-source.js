@@ -2,6 +2,7 @@ import { Conversation } from "@elevenlabs/client";
 
 let conversation = null;
 let muted = false;
+let integrationToken = "";
 
 function setState(state, title, caption) {
   const presence = document.querySelector("#live-agent-presence");
@@ -33,6 +34,9 @@ function showWorkspace(parameters = {}) {
 const clientTools = {
   show_workspace: parameters => showWorkspace(parameters),
   request_confirmation: parameters => requestConfirmation(parameters),
+  run_integration: parameters => runIntegration(parameters),
+  start_browser: parameters => startBrowser(parameters),
+  control_browser: parameters => controlBrowser(parameters),
   show_email_workspace: parameters => showWorkspace({ type: "email", ...parameters }),
   show_product_workspace: parameters => showWorkspace({ type: "products", ...parameters }),
   show_video_workspace: parameters => showWorkspace({ type: "video", ...parameters }),
@@ -43,6 +47,86 @@ const clientTools = {
     return "The request is prepared in the text workspace for the user to send.";
   },
 };
+
+function parsedArguments(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
+async function integrationRequest(path, body) {
+  const response = await fetch(`/api/integrations${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${integrationToken}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.detail || "Integration request failed");
+  return result;
+}
+
+async function runIntegration(parameters = {}) {
+  const tool = parameters.tool_name;
+  const result = await integrationRequest(`/execute/${tool}`, {
+    arguments: parsedArguments(parameters.arguments),
+    confirmed: Boolean(parameters.confirmed),
+  });
+  if (tool === "youtube_search" && result.videos?.length) {
+    renderLiveWorkspace({
+      type: "youtube",
+      title: result.videos[0].title,
+      summary: `Playing from ${result.videos[0].channel}`,
+      embed_url: result.videos[0].embed_url,
+    });
+  } else if (tool === "calendar_events") {
+    renderLiveWorkspace({
+      type: "calendar",
+      title: "Your Google Calendar",
+      summary: "Live events from your connected calendar.",
+      events: (result.items || []).map(event => `${event.summary || "Untitled"} - ${event.start?.dateTime || event.start?.date || ""}`),
+    });
+  } else if (tool.startsWith("gmail_")) {
+    renderLiveWorkspace({
+      type: "gmail",
+      title: tool === "gmail_send" ? "Email sent" : tool === "gmail_draft" ? "Draft saved" : "Gmail result",
+      summary: tool === "gmail_send" ? "Google confirmed the message was sent." : "Live Gmail data is ready.",
+      details: JSON.stringify(result),
+    });
+  } else {
+    renderLiveWorkspace({ type: "brief", title: "Action complete", details: JSON.stringify(result) });
+  }
+  return JSON.stringify(result);
+}
+
+async function startBrowser(parameters = {}) {
+  const result = await integrationRequest("/browser/session", {});
+  renderLiveWorkspace({
+    type: "browser",
+    title: parameters.title || "Live browser",
+    summary: "You can take manual control for logins, OTPs, and CAPTCHAs.",
+    live_view_url: result.live_view_url,
+  });
+  return JSON.stringify(result);
+}
+
+async function controlBrowser(parameters = {}) {
+  const sessionId = parameters.session_id;
+  const confirmed = Boolean(parameters.confirmed);
+  const result = await integrationRequest(`/browser/${sessionId}/action?confirmed=${confirmed}`, {
+    action: parameters.action,
+    url: parameters.url || null,
+    selector: parameters.selector || null,
+    text: parameters.text || null,
+  });
+  return JSON.stringify(result);
+}
 
 function parseDetails(value) {
   if (Array.isArray(value)) return value.map(String);
@@ -81,8 +165,31 @@ function renderLiveWorkspace(data) {
 
   if (data.type === "calendar") renderCalendar(workspace, data);
   else if (data.type === "email" || data.type === "gmail") renderLiveEmail(workspace, data);
+  else if (data.type === "youtube") renderYouTube(workspace, data);
+  else if (data.type === "browser") renderBrowser(workspace, data);
   else if (["retail", "bar", "inventory"].includes(data.type)) renderRetail(workspace, data);
   else renderDetailList(workspace, parseDetails(data.details || data.items || data.steps));
+}
+
+function renderYouTube(workspace, data) {
+  const url = data.embed_url || data.url;
+  if (!url) return renderDetailList(workspace, parseDetails(data.details));
+  const frame = document.createElement("iframe");
+  frame.className = "live-embed";
+  frame.src = url;
+  frame.allow = "autoplay; encrypted-media; picture-in-picture";
+  frame.allowFullscreen = true;
+  workspace.append(frame);
+}
+
+function renderBrowser(workspace, data) {
+  const url = data.live_view_url || data.url;
+  if (!url) return renderDetailList(workspace, parseDetails(data.details));
+  const frame = document.createElement("iframe");
+  frame.className = "live-embed browser-live-view";
+  frame.src = url;
+  frame.allow = "clipboard-read; clipboard-write";
+  workspace.append(frame);
 }
 
 function liveWorkspaceTitle(type) {
@@ -179,9 +286,11 @@ window.startLiveConversation = async function startLiveConversation() {
   try {
     await navigator.mediaDevices.getUserMedia({ audio: true });
     const response = await window.SnapkeyUI.api("/voice/conversation-token", { method: "POST" });
+    integrationToken = response.tool_token;
     conversation = await Conversation.startSession({
       conversationToken: response.token,
       connectionType: "webrtc",
+      dynamicVariables: { snapkey_tool_token: response.tool_token },
       clientTools,
       onConnect: () => {
         setConnected(true);

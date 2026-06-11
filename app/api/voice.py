@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from app.config import get_settings
 from app.models import User
 from app.schemas import LiveConversationTokenResponse, SpeechRequest
-from app.security import get_current_user
+from app.security import create_purpose_token, get_current_user
 from app.services.elevenlabs import create_conversation_token, live_agent_ready, stream_speech, voice_ready
 
 router = APIRouter(prefix="/voice", tags=["voice"])
@@ -23,7 +23,10 @@ async def conversation_token(
         token = await create_conversation_token(str(user.id))
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail="Unable to start the live voice agent") from exc
-    return LiveConversationTokenResponse(token=token)
+    return LiveConversationTokenResponse(
+        token=token,
+        tool_token=create_purpose_token(user.id, "elevenlabs-tool", minutes=30),
+    )
 
 
 @router.post("/speech")

@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, chat, operator, tools, voice
+from app.api import auth, chat, integrations, operator, tools, voice
 from app.config import get_settings
 from app.database import create_tables
 from app.schemas import AppConfigResponse
@@ -35,6 +35,7 @@ app.include_router(tools.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(operator.router, prefix="/api")
 app.include_router(voice.router, prefix="/api")
+app.include_router(integrations.router, prefix="/api")
 
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=static_dir), name="static")

@@ -83,8 +83,24 @@ function showWorkspace() {
   document.querySelector("#auth").classList.add("hidden");
   document.querySelector("#workspace").classList.remove("hidden");
   document.querySelector("#logout-button").classList.remove("hidden");
+  document.querySelector("#google-connect").classList.remove("hidden");
   document.querySelector("#mode-switch").classList.remove("hidden");
   document.querySelector("#prompt").focus();
+}
+
+async function connectGoogle() {
+  const button = document.querySelector("#google-connect");
+  try {
+    const status = await api("/integrations/google/status");
+    if (status.connected) {
+      button.textContent = "Google connected";
+      return;
+    }
+    const result = await api("/integrations/google/connect");
+    location.href = result.authorization_url;
+  } catch (reason) {
+    createMessage("assistant", reason.message);
+  }
 }
 
 function logout() {

@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     elevenlabs_language_code: str = ""
     tts_max_characters: int = 5_000
     cors_origins: str = ""
+    public_url: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    youtube_api_key: str = ""
+    browserbase_api_key: str = ""
+    browserbase_project_id: str = ""
+    browserbase_region: str = "ap-southeast-1"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

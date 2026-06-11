@@ -136,6 +136,26 @@ request_human_operator
 
 For the fastest setup, only add `show_workspace` and `request_confirmation`. The other tools remain supported for more specialized configurations.
 
+To use the real integrations from the live agent, also add these three client tools:
+
+```text
+run_integration
+start_browser
+control_browser
+```
+
+`run_integration` parameters:
+
+```text
+tool_name   Required string, LLM Prompt
+arguments   Required string, LLM Prompt containing valid JSON
+confirmed   Required boolean, LLM Prompt
+```
+
+Allowed `tool_name` values are `gmail_search`, `gmail_read`, `gmail_draft`, `gmail_send`, `calendar_events`, `calendar_create`, and `youtube_search`.
+
+`start_browser` only needs an optional `title` string. `control_browser` uses `session_id`, `action`, `url`, `selector`, `text`, and `confirmed`. The agent must call `request_confirmation` before Gmail send, Calendar create, or interactive browser actions, then pass `confirmed=true` only when the user approved.
+
 `show_workspace` parameters:
 
 ```text
@@ -156,6 +176,58 @@ action   Optional string, LLM Prompt
 ```
 
 The confirmation tool pauses until the user selects **Confirm** or **Cancel**, then reports the decision to the live agent. It does not itself perform the external action. Real Gmail sending, calendar creation, inventory edits, and financial actions require authenticated server tools.
+
+## Real Integrations
+
+Configure these Railway variables:
+
+```env
+PUBLIC_URL=https://your-app.up.railway.app
+GOOGLE_CLIENT_ID=<Google OAuth web client ID>
+GOOGLE_CLIENT_SECRET=<Google OAuth client secret>
+YOUTUBE_API_KEY=<YouTube Data API key>
+BROWSERBASE_API_KEY=<Browserbase API key>
+BROWSERBASE_PROJECT_ID=<Browserbase project ID>
+BROWSERBASE_REGION=ap-southeast-1
+CREDENTIAL_ENCRYPTION_KEY=<stable Fernet key>
+```
+
+Enable Gmail API, Google Calendar API, and YouTube Data API v3 in Google Cloud. Add this exact authorized redirect URI to the Google OAuth web client:
+
+```text
+https://your-app.up.railway.app/api/integrations/google/callback
+```
+
+After deployment, sign into Snapkey and select **Connect Google**. Refresh tokens are encrypted before storage.
+
+ElevenLabs server tools call the endpoints below with:
+
+```text
+Authorization: Bearer {{snapkey_tool_token}}
+Content-Type: application/json
+```
+
+The realtime client injects `snapkey_tool_token` as a short-lived dynamic variable. Available server-tool endpoints:
+
+```text
+POST /api/integrations/execute/gmail_search
+POST /api/integrations/execute/gmail_read
+POST /api/integrations/execute/gmail_draft
+POST /api/integrations/execute/gmail_send
+POST /api/integrations/execute/calendar_events
+POST /api/integrations/execute/calendar_create
+POST /api/integrations/execute/youtube_search
+POST /api/integrations/browser/session
+POST /api/integrations/browser/{session_id}/action
+```
+
+Each execute endpoint accepts:
+
+```json
+{"arguments": {}, "confirmed": false}
+```
+
+`gmail_send` and `calendar_create` require `"confirmed": true`. Browser click, type, and keypress actions require the `confirmed=true` query parameter. Browserbase live-view URLs can be passed to `show_workspace` with `type=browser`; YouTube embed URLs can be passed with `type=youtube`.
 
 Suggested parameters:
 

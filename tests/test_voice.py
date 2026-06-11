@@ -69,4 +69,5 @@ def test_live_conversation_token_is_created_server_side(monkeypatch):
         )
 
     assert response.status_code == 200
-    assert response.json() == {"token": "short-lived-webrtc-token"}
+    assert response.json()["token"] == "short-lived-webrtc-token"
+    assert response.json()["tool_token"]

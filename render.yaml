@@ -28,6 +28,20 @@ services:
         sync: false
       - key: ELEVENLABS_AGENT_ID
         sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: BROWSERBASE_API_KEY
+        sync: false
+      - key: BROWSERBASE_PROJECT_ID
+        sync: false
+      - key: BROWSERBASE_REGION
+        value: ap-southeast-1
 
 databases:
   - name: snapkey-db

@@ -43,6 +43,19 @@ class AppConfigResponse(BaseModel):
 
 class LiveConversationTokenResponse(BaseModel):
     token: str
+    tool_token: str
+
+
+class IntegrationExecuteRequest(BaseModel):
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    confirmed: bool = False
+
+
+class BrowserActionRequest(BaseModel):
+    action: str
+    url: str | None = None
+    selector: str | None = None
+    text: str | None = None
 
 
 class SpeechRequest(BaseModel):
