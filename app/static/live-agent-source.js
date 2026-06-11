@@ -7,6 +7,10 @@ let activeBrowserSessionId = "";
 let browserStarting = false;
 let lastBrowserIntent = "";
 
+function updateAgentContext(message) {
+  if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
+}
+
 function setState(state, title, caption) {
   const presence = document.querySelector("#live-agent-presence");
   presence.dataset.state = state;
@@ -110,7 +114,18 @@ async function runIntegration(parameters = {}) {
 
 async function startBrowser(parameters = {}) {
   if (activeBrowserSessionId) {
-    if (parameters.url) await navigateActiveBrowser(parameters.url);
+    if (parameters.url) {
+      const navigation = await navigateActiveBrowser(parameters.url);
+      updateAgentContext(
+        `Snapkey's live browser navigated successfully to ${navigation.title || navigation.url}. ` +
+        "A live interactive browser is visible beside you. Acknowledge this and continue helping the user."
+      );
+    } else {
+      updateAgentContext(
+        "Snapkey's live interactive browser is already open and visible beside you. " +
+        "You can tell the user it is ready."
+      );
+    }
     return JSON.stringify({ session_id: activeBrowserSessionId, reused: true });
   }
   const result = await integrationRequest("/browser/session", {});
@@ -121,7 +136,18 @@ async function startBrowser(parameters = {}) {
     summary: "You can take manual control for logins, OTPs, and CAPTCHAs.",
     live_view_url: result.live_view_url,
   });
-  if (parameters.url) await navigateActiveBrowser(parameters.url);
+  if (parameters.url) {
+    const navigation = await navigateActiveBrowser(parameters.url);
+    updateAgentContext(
+      `Snapkey opened a live interactive browser and navigated successfully to ` +
+      `${navigation.title || navigation.url}. The browser is visible beside you. ` +
+      "Do not say browsing is unavailable; acknowledge the result and continue naturally."
+    );
+  } else {
+    updateAgentContext(
+      "Snapkey opened a live interactive browser successfully. It is visible beside you and ready for commands."
+    );
+  }
   return JSON.stringify(result);
 }
 
@@ -134,6 +160,10 @@ async function controlBrowser(parameters = {}) {
     selector: parameters.selector || null,
     text: parameters.text || null,
   });
+  updateAgentContext(
+    `The live browser completed the ${parameters.action} action successfully. ` +
+    `Current page: ${result.title || result.url || "browser ready"}.`
+  );
   return JSON.stringify(result);
 }
 
@@ -174,6 +204,10 @@ async function handleAutomaticBrowserIntent(text) {
   try {
     await startBrowser({ title: "Live browser", url });
   } catch (error) {
+    updateAgentContext(
+      `Snapkey could not complete the live browser request. Reason: ${error?.message || "browser connection failed"}. ` +
+      "Explain the issue briefly without claiming that browsing is unavailable in general."
+    );
     renderLiveWorkspace({
       type: "brief",
       title: "Browser connection issue",

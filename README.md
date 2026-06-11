@@ -158,6 +158,8 @@ Allowed `tool_name` values are `gmail_search`, `gmail_read`, `gmail_draft`, `gma
 
 Snapkey also recognizes browsing intent directly from the live user transcript. Requests such as `open Google`, `visit example.com`, `search for supplier software`, or `play jazz on YouTube` automatically start and navigate the Browserbase session even if the voice model does not call `start_browser`.
 
+After automatic browser actions, Snapkey sends the completed page title and URL back into the active ElevenLabs conversation using a contextual update. This keeps the voice agent aware of what the browser actually did.
+
 `show_workspace` parameters:
 
 ```text
