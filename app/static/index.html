@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snapkey Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">SNAPKEY ASSISTANT</p>
+      <h1>Your tools, directed by one agent.</h1>
+      <p>Connect capabilities, give a command, and follow every execution.</p>
+      <p class="preview hidden" id="preview-badge">Human-assisted concierge preview</p>
+    </section>
+    <section class="panel" id="auth">
+      <h2>Get started</h2>
+      <input id="email" type="email" placeholder="you@example.com">
+      <input id="password" type="password" placeholder="Password (8+ characters)">
+      <div class="actions"><button onclick="authenticate('signup')">Sign up</button><button class="quiet" onclick="authenticate('login')">Log in</button></div>
+    </section>
+    <section class="panel hidden" id="workspace">
+      <div class="row"><h2>Connected tools</h2><button class="quiet" onclick="loadTools()">Refresh</button></div>
+      <div id="tools" class="tools"></div>
+      <h2>Command</h2>
+      <div id="messages" class="messages"><p id="welcome-message">Try <code>calculate 20 * 4</code> after connecting Calculator.</p></div>
+      <div class="composer"><input id="prompt" placeholder="What should your agent do?"><button onclick="sendPrompt()">Run</button></div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

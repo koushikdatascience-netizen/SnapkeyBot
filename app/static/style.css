@@ -1,0 +1,26 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #0b0d12; color: #f4f4f5; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 20% 0, #262052 0, transparent 35%), #0b0d12; }
+main { width: min(860px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0; }
+.hero { margin-bottom: 40px; }
+.eyebrow { color: #a78bfa; font-weight: 700; letter-spacing: .16em; font-size: 12px; }
+.preview { display: inline-block; padding: 7px 10px; border: 1px solid #4c3d82; border-radius: 999px; color: #c4b5fd; font-size: 12px; }
+h1 { max-width: 650px; margin: 12px 0; font-size: clamp(42px, 8vw, 76px); line-height: .98; letter-spacing: -.06em; }
+h2 { margin: 0 0 18px; font-size: 18px; }
+.panel { border: 1px solid #292d39; background: #11141bd9; border-radius: 20px; padding: 24px; box-shadow: 0 24px 70px #0008; }
+input { width: 100%; background: #090b10; border: 1px solid #303541; border-radius: 10px; padding: 13px; color: white; margin-bottom: 10px; }
+button { border: 0; border-radius: 10px; padding: 12px 18px; background: #8b5cf6; color: white; font-weight: 700; cursor: pointer; }
+button.quiet { background: #252936; }
+.actions, .row, .composer { display: flex; gap: 10px; }
+.row { align-items: center; justify-content: space-between; }
+.tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 0 0 30px; }
+.tool { padding: 16px; border-radius: 12px; border: 1px solid #292d39; background: #171a22; }
+.tool p { min-height: 40px; color: #a1a1aa; font-size: 13px; }
+.tool small { display: block; min-height: 30px; color: #71717a; }
+.messages { min-height: 180px; max-height: 360px; overflow-y: auto; padding: 15px; background: #090b10; border-radius: 12px; margin-bottom: 12px; }
+.messages p { padding: 10px 12px; border-left: 2px solid #8b5cf6; }
+.messages .pending { color: #a1a1aa; }
+.concierge .row, .concierge .tools { display: none; }
+.composer input { margin: 0; }
+.hidden { display: none; }
+code { color: #c4b5fd; }
