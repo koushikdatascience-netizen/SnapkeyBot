@@ -166,13 +166,22 @@ async def accept_operator_update(db: AsyncSession, update: dict[str, Any]) -> bo
     reply_to_id = message.get("reply_to_message", {}).get("message_id")
     reply_text = message.get("text") or message.get("caption") or ""
     attachment = _operator_attachment(message)
-    if not reply_to_id or (not reply_text and not attachment):
+    if not reply_text and not attachment:
         return False
-    dispatch = await db.scalar(
-        select(OperatorDispatch)
-        .where(OperatorDispatch.telegram_message_id == int(reply_to_id))
-        .with_for_update()
-    )
+    if reply_to_id:
+        dispatch_query = select(OperatorDispatch).where(
+            OperatorDispatch.telegram_message_id == int(reply_to_id)
+        )
+    else:
+        dispatch_query = (
+            select(OperatorDispatch)
+            .where(
+                OperatorDispatch.telegram_chat_id == int(settings.telegram_operator_chat_id),
+                OperatorDispatch.replied_at.is_(None),
+            )
+            .order_by(OperatorDispatch.created_at.desc())
+        )
+    dispatch = await db.scalar(dispatch_query.with_for_update())
     if not dispatch or dispatch.replied_at:
         return False
     task = await db.get(AgentTask, dispatch.task_id)
@@ -199,4 +208,14 @@ async def accept_operator_update(db: AsyncSession, update: dict[str, Any]) -> bo
     dispatch.replied_at = datetime.now(timezone.utc)
     db.add(Message(user_id=task.user_id, session_id=task.session_id, role="assistant", content=reply_text))
     await db.commit()
+    try:
+        await _telegram_request(
+            "sendMessage",
+            {
+                "chat_id": settings.telegram_operator_chat_id,
+                "text": f"Delivered to Snapkey client.\nTask: {task.id}",
+            },
+        )
+    except httpx.HTTPError:
+        pass
     return True

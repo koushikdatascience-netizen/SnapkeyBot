@@ -69,6 +69,11 @@ async def test_operator_reply_completes_matching_task(monkeypatch):
 async def test_operator_reply_rejects_unknown_chat(monkeypatch):
     monkeypatch.setenv("TELEGRAM_OPERATOR_CHAT_ID", "12345")
     get_settings.cache_clear()
+    db = FakeDb(None, None)
+    accepted = await accept_operator_update(db, {"message": {"chat": {"id": 999}, "text": "No"}})
+    assert accepted is False
+    assert db.commits == 0
+    get_settings.cache_clear()
 
 
 @pytest.mark.asyncio
@@ -80,10 +85,36 @@ async def test_webhook_readiness_requires_config(monkeypatch):
     get_settings.cache_clear()
     assert await telegram_webhook_ready() is False
     get_settings.cache_clear()
-    db = FakeDb(None, None)
-    accepted = await accept_operator_update(db, {"message": {"chat": {"id": 999}, "text": "No"}})
-    assert accepted is False
-    assert db.commits == 0
+
+
+@pytest.mark.asyncio
+async def test_plain_operator_message_answers_latest_pending_task(monkeypatch):
+    from app.services import telegram
+
+    monkeypatch.setenv("TELEGRAM_OPERATOR_CHAT_ID", "12345")
+    get_settings.cache_clear()
+    task = SimpleNamespace(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        session_id=uuid.uuid4(),
+        status=TaskStatus.queued,
+        result=None,
+    )
+    dispatch = SimpleNamespace(task_id=task.id, replied_at=None)
+    db = FakeDb(dispatch, task)
+
+    async def fake_telegram_request(_method, _payload):
+        return {}
+
+    monkeypatch.setattr(telegram, "_telegram_request", fake_telegram_request)
+    accepted = await accept_operator_update(
+        db,
+        {"message": {"chat": {"id": 12345}, "text": "Hello from Telegram"}},
+    )
+
+    assert accepted is True
+    assert task.result["message"] == "Hello from Telegram"
+    assert task.status == TaskStatus.succeeded
     get_settings.cache_clear()
 
 
