@@ -156,6 +156,8 @@ Allowed `tool_name` values are `gmail_search`, `gmail_read`, `gmail_draft`, `gma
 
 `start_browser` only needs an optional `title` string. `control_browser` uses `session_id`, `action`, `url`, `selector`, `text`, and `confirmed`. The agent must call `request_confirmation` before Gmail send, Calendar create, or interactive browser actions, then pass `confirmed=true` only when the user approved.
 
+Snapkey also recognizes browsing intent directly from the live user transcript. Requests such as `open Google`, `visit example.com`, `search for supplier software`, or `play jazz on YouTube` automatically start and navigate the Browserbase session even if the voice model does not call `start_browser`.
+
 `show_workspace` parameters:
 
 ```text

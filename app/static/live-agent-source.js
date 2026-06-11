@@ -3,6 +3,9 @@ import { Conversation } from "@elevenlabs/client";
 let conversation = null;
 let muted = false;
 let integrationToken = "";
+let activeBrowserSessionId = "";
+let browserStarting = false;
+let lastBrowserIntent = "";
 
 function setState(state, title, caption) {
   const presence = document.querySelector("#live-agent-presence");
@@ -106,13 +109,19 @@ async function runIntegration(parameters = {}) {
 }
 
 async function startBrowser(parameters = {}) {
+  if (activeBrowserSessionId) {
+    if (parameters.url) await navigateActiveBrowser(parameters.url);
+    return JSON.stringify({ session_id: activeBrowserSessionId, reused: true });
+  }
   const result = await integrationRequest("/browser/session", {});
+  activeBrowserSessionId = result.session_id;
   renderLiveWorkspace({
     type: "browser",
     title: parameters.title || "Live browser",
     summary: "You can take manual control for logins, OTPs, and CAPTCHAs.",
     live_view_url: result.live_view_url,
   });
+  if (parameters.url) await navigateActiveBrowser(parameters.url);
   return JSON.stringify(result);
 }
 
@@ -126,6 +135,54 @@ async function controlBrowser(parameters = {}) {
     text: parameters.text || null,
   });
   return JSON.stringify(result);
+}
+
+async function navigateActiveBrowser(url) {
+  if (!activeBrowserSessionId) await startBrowser();
+  return integrationRequest(`/browser/${activeBrowserSessionId}/action?confirmed=false`, {
+    action: "navigate",
+    url,
+    selector: null,
+    text: null,
+  });
+}
+
+function browserIntentUrl(text) {
+  const value = text.toLowerCase().trim();
+  if (!/(open|browse|visit|search|google|youtube|website|web)/.test(value)) return "";
+  const explicitUrl = text.match(/https?:\/\/\S+/i)?.[0];
+  if (explicitUrl) return explicitUrl;
+  const domain = text.match(/\b(?:www\.)?[a-z0-9-]+\.(?:com|in|org|net|io|ai)\b/i)?.[0];
+  if (domain) return `https://${domain}`;
+  const youtubeQuery = text.match(/(?:youtube|play)(?:\s+for)?\s+(.+)/i)?.[1];
+  if (youtubeQuery) return `https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeQuery)}`;
+  const searchQuery = text
+    .replace(/^(please\s+)?(open|browse|visit|go to|google|search(?: for)?|look up)\s+/i, "")
+    .trim();
+  if (searchQuery && !/^google$/i.test(searchQuery)) {
+    return `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+  }
+  return "https://www.google.com";
+}
+
+async function handleAutomaticBrowserIntent(text) {
+  const url = browserIntentUrl(text);
+  const intentKey = `${text}|${url}`;
+  if (!url || intentKey === lastBrowserIntent || browserStarting) return;
+  lastBrowserIntent = intentKey;
+  browserStarting = true;
+  try {
+    await startBrowser({ title: "Live browser", url });
+  } catch (error) {
+    renderLiveWorkspace({
+      type: "brief",
+      title: "Browser connection issue",
+      summary: error?.message || "Unable to start the live browser.",
+      details: "Check Browserbase variables and Railway deployment logs.",
+    });
+  } finally {
+    browserStarting = false;
+  }
 }
 
 function parseDetails(value) {
@@ -304,6 +361,7 @@ window.startLiveConversation = async function startLiveConversation() {
       onMessage: message => {
         const text = message.message || message.text;
         if (text) document.querySelector("#live-caption").textContent = text;
+        if (text && message.source === "user") handleAutomaticBrowserIntent(text);
       },
       onModeChange: mode => {
         const value = typeof mode === "string" ? mode : mode.mode;
