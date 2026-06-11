@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models import AgentTask, Message, OperatorDispatch, TaskStatus
+from app.services.presentation import parse_operator_reply, presentation_for_attachment
 
 
 def validate_telegram_config() -> None:
@@ -84,7 +85,9 @@ def _dispatch_text(task: AgentTask, user_email: str) -> str:
         f"Client: {user_email}\n"
         f"Session: {task.session_id}\n"
         f"Task: {task.id}\n"
-        "Reply directly to this Telegram message to answer the client.\n\n"
+        "Reply directly to answer. Optional first-line workspace commands:\n"
+        "/email, /products, /video, /progress, /brief\n"
+        "Use fields like title:, summary:, step:, or item: Name | Price | Rating | Note\n\n"
         f"Request:\n{task.prompt[:2500]}"
     )
 
@@ -188,11 +191,14 @@ async def accept_operator_update(db: AsyncSession, update: dict[str, Any]) -> bo
     if not task or task.status in {TaskStatus.succeeded, TaskStatus.failed}:
         return False
 
+    clean_text, presentation = parse_operator_reply(reply_text)
     result: dict[str, Any] = {
-        "message": reply_text or "Sent an attachment.",
+        "message": clean_text or "Sent an attachment.",
         "source": "concierge",
         "attachments": [],
     }
+    if presentation:
+        result["presentation"] = presentation
     if attachment:
         saved = await _download_operator_attachment(task.id, attachment)
         result["attachments"].append(
@@ -203,10 +209,21 @@ async def accept_operator_update(db: AsyncSession, update: dict[str, Any]) -> bo
                 "_path": saved["path"],
             }
         )
+        if not presentation:
+            attachment_presentation = presentation_for_attachment(saved["content_type"])
+            if attachment_presentation:
+                result["presentation"] = attachment_presentation
     task.result = result
     task.status = TaskStatus.succeeded
     dispatch.replied_at = datetime.now(timezone.utc)
-    db.add(Message(user_id=task.user_id, session_id=task.session_id, role="assistant", content=reply_text))
+    db.add(
+        Message(
+            user_id=task.user_id,
+            session_id=task.session_id,
+            role="assistant",
+            content=clean_text or "Sent an attachment.",
+        )
+    )
     await db.commit()
     try:
         await _telegram_request(

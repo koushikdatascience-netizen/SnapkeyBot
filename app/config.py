@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     elevenlabs_output_format: str = "mp3_22050_32"
     elevenlabs_language_code: str = ""
     tts_max_characters: int = 5_000
+    cors_origins: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

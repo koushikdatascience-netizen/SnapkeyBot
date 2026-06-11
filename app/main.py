@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -20,6 +21,15 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Snapkey Assistant API", version="0.1.0", lifespan=lifespan)
+settings = get_settings()
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 app.include_router(auth.router, prefix="/api")
 app.include_router(tools.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")

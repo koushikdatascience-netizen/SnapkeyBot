@@ -154,3 +154,41 @@ async def test_operator_attachment_is_added_to_result(monkeypatch):
     assert task.result["attachments"][0]["name"] == "answer.pdf"
     assert task.result["attachments"][0]["url"].endswith("/attachments/0")
     get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_operator_command_adds_interactive_workspace(monkeypatch):
+    from app.services import telegram
+
+    monkeypatch.setenv("TELEGRAM_OPERATOR_CHAT_ID", "12345")
+    get_settings.cache_clear()
+    task = SimpleNamespace(
+        id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        session_id=uuid.uuid4(),
+        status=TaskStatus.queued,
+        result=None,
+    )
+    dispatch = SimpleNamespace(task_id=task.id, replied_at=None)
+    db = FakeDb(dispatch, task)
+
+    async def fake_telegram_request(_method, _payload):
+        return {}
+
+    monkeypatch.setattr(telegram, "_telegram_request", fake_telegram_request)
+    accepted = await accept_operator_update(
+        db,
+        {
+            "message": {
+                "chat": {"id": 12345},
+                "text": "/products\ntitle: Top chairs\nitem: Chair One | Rs 4,999 | 4.7 | Best value",
+                "reply_to_message": {"message_id": 99},
+            }
+        },
+    )
+
+    assert accepted is True
+    assert task.result["message"] == "Top chairs"
+    assert task.result["presentation"]["type"] == "products"
+    assert task.result["presentation"]["items"][0]["name"] == "Chair One"
+    get_settings.cache_clear()

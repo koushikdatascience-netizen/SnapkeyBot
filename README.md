@@ -21,26 +21,30 @@ The concierge UI clearly labels itself as human-assisted. It is intended for pro
 py -3.12 -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-### 2. Push to GitHub and deploy on Render
+### 2. Push to GitHub and deploy on Railway
 
-This repository includes `render.yaml`. In Render, create a **Blueprint** from the GitHub repository and set:
+This repository includes `railway.json` and a production Dockerfile. Create a Railway project from this GitHub repository, add a Railway PostgreSQL service, and add a volume mounted at `/data`. Set `DATABASE_URL=${{Postgres.DATABASE_URL}}` and `UPLOAD_DIR=/data/uploads`, then add:
 
 ```env
+APP_ENV=production
+TASK_ALWAYS_EAGER=true
+CONCIERGE_MODE=true
+JWT_SECRET=<at-least-32-random-characters>
 TELEGRAM_BOT_TOKEN=<BotFather token>
 TELEGRAM_OPERATOR_CHAT_ID=<your numeric chat id>
 TELEGRAM_WEBHOOK_SECRET=<generated secret>
+ELEVENLABS_API_KEY=<private API key>
+ELEVENLABS_VOICE_ID=<selected voice ID>
 ```
-
-Render provisions Postgres, generates `JWT_SECRET`, enables concierge mode, and deploys the Docker web service.
 
 ### 3. Register the deployed webhook
 
-From this repository, set the same values plus the Render URL:
+From this repository, set the same values plus the Railway URL:
 
 ```powershell
 $env:TELEGRAM_BOT_TOKEN="..."
 $env:TELEGRAM_WEBHOOK_SECRET="..."
-$env:PUBLIC_URL="https://your-service.onrender.com"
+$env:PUBLIC_URL="https://your-service.up.railway.app"
 py -3.12 scripts/setup_telegram_webhook.py
 ```
 
@@ -48,13 +52,44 @@ During the demo, each client message appears in Telegram. **Reply directly to th
 
 If the live site shows `Setup required` or Telegram receives nothing:
 
-1. Confirm all three Telegram environment variables exist on the Render web service.
-2. Confirm the latest Render deploy completed successfully.
-3. Run `scripts/setup_telegram_webhook.py` again using the live Render URL.
+1. Confirm all three Telegram environment variables exist on the Railway app service.
+2. Confirm the latest Railway deployment completed successfully.
+3. Run `scripts/setup_telegram_webhook.py` again using the live Railway URL.
 4. Check the script output for `Last Telegram error`.
 5. In Telegram, reply directly to the bot's tagged request rather than sending a new standalone message.
 
-The concierge supports browser text, images, voice recordings, and files. Telegram operator replies may also include text, images, voice, audio, video, or documents. Demo attachments are stored on the web service filesystem and can disappear after a Render restart; use object storage before production.
+The concierge supports browser text, images, voice recordings, and files. Telegram operator replies may also include text, images, voice, audio, video, or documents. The Railway volume keeps media available across deployments.
+
+## Interactive Operator Workspaces
+
+Normal Telegram replies still appear as chat messages. Start a reply with one of these commands to transform the client UI:
+
+```text
+/email
+subject: Latest message from the founder
+from: founder@example.com
+summary: The founder approved the launch plan.
+The full email body can go here.
+```
+
+```text
+/products
+title: Top office chairs
+summary: I compared the strongest options for comfort and value.
+item: Green Soul Jupiter | Rs 8,490 | 4.5 | Best overall value
+item: Featherlite Amaze | Rs 11,999 | 4.4 | Best for long sessions
+```
+
+```text
+/progress
+title: Campaign email prepared
+summary: The draft is ready for approval.
+step: Found the marketing contacts
+step: Prepared the message
+step: Checked recipients
+```
+
+Use `/video` with a Telegram video attachment to open the visual workspace.
 
 ## ElevenLabs Voice Mode
 
@@ -62,7 +97,7 @@ Voice mode streams Telegram operator text replies through ElevenLabs Flash v2.5.
 
 1. Create an ElevenLabs account and API key.
 2. In the ElevenLabs Voices library, choose an Indian female voice and copy its voice ID.
-3. Add these variables to the Render web service:
+3. Add these variables to the Railway app service:
 
 ```env
 ELEVENLABS_API_KEY=<private API key>
@@ -73,7 +108,7 @@ ELEVENLABS_OUTPUT_FORMAT=mp3_22050_32
 
 Set `ELEVENLABS_LANGUAGE_CODE=hi` only when replies should consistently be Hindi. Leave it empty for English/Hinglish auto-detection. Never expose the ElevenLabs API key in browser code.
 
-After saving the variables, deploy the latest commit and refresh the site. The **Voice** button becomes available when both the API key and voice ID are configured.
+After saving the variables, deploy the latest commit and refresh the site. Enable **Live voice** once and every new reply will speak automatically.
 
 ## Local Development
 
