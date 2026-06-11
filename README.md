@@ -56,6 +56,25 @@ If the live site shows `Setup required` or Telegram receives nothing:
 
 The concierge supports browser text, images, voice recordings, and files. Telegram operator replies may also include text, images, voice, audio, video, or documents. Demo attachments are stored on the web service filesystem and can disappear after a Render restart; use object storage before production.
 
+## ElevenLabs Voice Mode
+
+Voice mode streams Telegram operator text replies through ElevenLabs Flash v2.5. The client chooses **Text** or **Voice** from the top bar, and can replay any assistant reply.
+
+1. Create an ElevenLabs account and API key.
+2. In the ElevenLabs Voices library, choose an Indian female voice and copy its voice ID.
+3. Add these variables to the Render web service:
+
+```env
+ELEVENLABS_API_KEY=<private API key>
+ELEVENLABS_VOICE_ID=<selected voice ID>
+ELEVENLABS_MODEL_ID=eleven_flash_v2_5
+ELEVENLABS_OUTPUT_FORMAT=mp3_22050_32
+```
+
+Set `ELEVENLABS_LANGUAGE_CODE=hi` only when replies should consistently be Hindi. Leave it empty for English/Hinglish auto-detection. Never expose the ElevenLabs API key in browser code.
+
+After saving the variables, deploy the latest commit and refresh the site. The **Voice** button becomes available when both the API key and voice ID are configured.
+
 ## Local Development
 
 ```powershell

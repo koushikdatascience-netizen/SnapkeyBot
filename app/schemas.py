@@ -37,3 +37,8 @@ class AppConfigResponse(BaseModel):
     concierge_mode: bool
     concierge_ready: bool
     max_upload_bytes: int
+    voice_ready: bool
+
+
+class SpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=5_000)

@@ -5,6 +5,9 @@ let selectedAttachment = null;
 let recorder = null;
 let recordingChunks = [];
 let maxUploadBytes = 15000000;
+let voiceReady = false;
+let responseMode = localStorage.getItem("responseMode") || "text";
+let currentAudio = null;
 
 initialize();
 
@@ -20,8 +23,10 @@ async function loadConfig() {
     conciergeMode = config.concierge_mode;
     conciergeReady = config.concierge_ready;
     maxUploadBytes = config.max_upload_bytes || maxUploadBytes;
+    voiceReady = config.voice_ready;
     setConnectionStatus(conciergeReady ? "Concierge online" : "Setup required", conciergeReady);
     document.querySelector("#connection-warning").classList.toggle("hidden", conciergeReady);
+    updateModeControls();
   } catch {
     setConnectionStatus("Service unavailable", false);
   }
@@ -74,6 +79,7 @@ function showWorkspace() {
   document.querySelector("#auth").classList.add("hidden");
   document.querySelector("#workspace").classList.remove("hidden");
   document.querySelector("#logout-button").classList.remove("hidden");
+  document.querySelector("#mode-switch").classList.remove("hidden");
   document.querySelector("#prompt").focus();
 }
 
@@ -98,6 +104,17 @@ function createMessage(role, text, pending = false) {
   const content = document.createElement("p");
   content.textContent = text;
   bubble.append(content);
+  if (role === "assistant" && !pending && text) {
+    const actions = document.createElement("div");
+    actions.className = "message-actions";
+    const speak = document.createElement("button");
+    speak.type = "button";
+    speak.textContent = "Play voice";
+    speak.onclick = () => speakText(text, speak);
+    speak.disabled = !voiceReady;
+    actions.append(speak);
+    bubble.append(actions);
+  }
   row.append(avatar, bubble);
   messages.append(row);
   row.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -203,6 +220,9 @@ async function pollTask(id, pending, attempts) {
       for (const attachment of task.result.attachments || []) {
         await addRemoteAttachment(row.querySelector(".bubble"), attachment);
       }
+      if (responseMode === "voice" && voiceReady && task.result.message) {
+        speakText(task.result.message, row.querySelector(".message-actions button"));
+      }
     } else if (task.status === "failed") {
       pending.remove();
       createMessage("assistant", task.error);
@@ -268,4 +288,87 @@ function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function updateModeControls() {
+  document.querySelector("#text-mode").classList.toggle("active", responseMode === "text");
+  const voiceButton = document.querySelector("#voice-mode");
+  voiceButton.classList.toggle("active", responseMode === "voice");
+  voiceButton.disabled = !voiceReady;
+  voiceButton.title = voiceReady ? "Speak concierge replies" : "Voice is not configured";
+}
+
+function setResponseMode(mode) {
+  if (mode === "voice" && !voiceReady) {
+    createMessage("assistant", "Voice mode is not configured yet.");
+    return;
+  }
+  responseMode = mode;
+  localStorage.setItem("responseMode", mode);
+  updateModeControls();
+  if (mode === "text" && currentAudio) {
+    currentAudio.pause();
+    setSpeaking(false);
+  }
+}
+
+function setSpeaking(speaking) {
+  document.querySelector("#assistant-aura")?.classList.toggle("speaking", speaking);
+}
+
+async function speakText(text, button) {
+  if (!voiceReady || !text) return;
+  if (currentAudio) currentAudio.pause();
+  button.disabled = true;
+  button.textContent = "Loading voice...";
+  setSpeaking(true);
+  try {
+    const response = await fetch("/api/voice/speech", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ text }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Voice is temporarily unavailable");
+    }
+    currentAudio = await streamAudioResponse(response);
+    currentAudio.onended = () => {
+      button.textContent = "Play voice";
+      button.disabled = false;
+      setSpeaking(false);
+    };
+    currentAudio.onerror = currentAudio.onended;
+  } catch (reason) {
+    button.textContent = "Play voice";
+    button.disabled = false;
+    setSpeaking(false);
+    createMessage("assistant", `${reason.message}. The text reply is still available.`);
+  }
+}
+
+async function streamAudioResponse(response) {
+  if (!window.MediaSource || !MediaSource.isTypeSupported("audio/mpeg")) {
+    const audio = new Audio(URL.createObjectURL(await response.blob()));
+    await audio.play();
+    return audio;
+  }
+  const mediaSource = new MediaSource();
+  const audio = new Audio(URL.createObjectURL(mediaSource));
+  const reader = response.body.getReader();
+  mediaSource.addEventListener("sourceopen", async () => {
+    const source = mediaSource.addSourceBuffer("audio/mpeg");
+    const append = chunk => new Promise(resolve => {
+      source.addEventListener("updateend", resolve, { once: true });
+      source.appendBuffer(chunk);
+    });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      await append(value);
+    }
+    if (mediaSource.readyState === "open") mediaSource.endOfStream();
+  }, { once: true });
+  await audio.play();
+  return audio;
 }

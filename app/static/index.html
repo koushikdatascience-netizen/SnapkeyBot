@@ -14,6 +14,10 @@
       <span>Snapkey</span>
     </a>
     <span class="status" id="connection-status"><i></i> Connecting</span>
+    <div class="mode-switch hidden" id="mode-switch" aria-label="Response mode">
+      <button class="active" id="text-mode" onclick="setResponseMode('text')">Text</button>
+      <button id="voice-mode" onclick="setResponseMode('voice')">Voice</button>
+    </div>
     <button class="ghost hidden" id="logout-button" onclick="logout()">Log out</button>
   </header>
 
@@ -34,7 +38,7 @@
 
     <section class="chat hidden" id="workspace">
       <div class="intro" id="intro">
-        <div class="aura"><span></span><span></span><span></span></div>
+        <div class="aura" id="assistant-aura"><span></span><span></span><span></span></div>
         <p class="kicker">SNAPKEY CONCIERGE</p>
         <h2>What can we move<br>forward today?</h2>
         <p>Share a question, image, voice note, or file. A live concierge is here to help.</p>
