@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,7 @@ settings = get_settings()
 async def chat(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
     prompt: Annotated[str, Form(max_length=20_000)] = "",
     attachment: Annotated[UploadFile | None, File()] = None,
 ) -> TaskResponse:
@@ -49,17 +50,29 @@ async def chat(
     await db.commit()
     await db.refresh(task)
     if settings.concierge_mode:
-        try:
-            await dispatch_to_operator(db, task, user.email, file_data)
-        except Exception as exc:
-            task.status = TaskStatus.failed
-            task.error = f"Unable to reach the concierge operator: {exc}"
-            await db.commit()
+        background_tasks.add_task(_dispatch_concierge_task, task.id, user.email, file_data)
     elif settings.task_always_eager:
         await _run_agent_task(task.id)
     else:
         run_agent_task.delay(str(task.id))
     return TaskResponse(id=task.id, status=task.status)
+
+
+async def _dispatch_concierge_task(
+    task_id: uuid.UUID,
+    user_email: str,
+    file_data: tuple[str, bytes, str] | None,
+) -> None:
+    async with SessionLocal() as db:
+        task = await db.get(AgentTask, task_id)
+        if not task:
+            return
+        try:
+            await dispatch_to_operator(db, task, user_email, file_data)
+        except Exception as exc:
+            task.status = TaskStatus.failed
+            task.error = f"Unable to reach the concierge operator: {exc}"
+            await db.commit()
 
 
 @router.get("/tasks/{task_id}/attachments/{attachment_index}")

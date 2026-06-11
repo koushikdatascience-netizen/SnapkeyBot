@@ -103,3 +103,9 @@ def test_chat_accepts_attachment(client, monkeypatch):
 
     assert response.status_code == 202
     assert dispatched[0][1] == ("brief.txt", b"demo content", "text/plain")
+
+
+def test_config_exposes_upload_limit(client):
+    response = client.get("/api/config")
+    assert response.status_code == 200
+    assert response.json()["max_upload_bytes"] > 0

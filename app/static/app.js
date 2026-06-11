@@ -4,6 +4,7 @@ let conciergeReady = false;
 let selectedAttachment = null;
 let recorder = null;
 let recordingChunks = [];
+let maxUploadBytes = 15000000;
 
 initialize();
 
@@ -18,6 +19,7 @@ async function loadConfig() {
     const config = await response.json();
     conciergeMode = config.concierge_mode;
     conciergeReady = config.concierge_ready;
+    maxUploadBytes = config.max_upload_bytes || maxUploadBytes;
     setConnectionStatus(conciergeReady ? "Concierge online" : "Setup required", conciergeReady);
     document.querySelector("#connection-warning").classList.toggle("hidden", conciergeReady);
   } catch {
@@ -117,6 +119,11 @@ function selectFile(event) {
 }
 
 function setAttachment(file) {
+  if (file.size > maxUploadBytes) {
+    createMessage("assistant", `That file is ${formatBytes(file.size)}. The current demo limit is ${formatBytes(maxUploadBytes)}.`);
+    clearAttachment();
+    return;
+  }
   selectedAttachment = file;
   const preview = document.querySelector("#attachment-preview");
   preview.replaceChildren();
@@ -174,6 +181,7 @@ async function sendPrompt(event) {
   resizeComposer();
   clearAttachment();
   const pending = createPending();
+  if (attachment) pending.querySelector("p").textContent = `Uploading ${attachment.name} securely`;
   const form = new FormData();
   form.append("prompt", text);
   if (attachment) form.append("attachment", attachment);

@@ -39,6 +39,7 @@ async def app_config() -> AppConfigResponse:
     return AppConfigResponse(
         concierge_mode=settings.concierge_mode,
         concierge_ready=await telegram_webhook_ready() if settings.concierge_mode else True,
+        max_upload_bytes=settings.max_upload_bytes,
     )
 
 
