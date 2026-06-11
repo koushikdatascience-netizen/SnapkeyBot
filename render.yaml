@@ -26,6 +26,8 @@ services:
         sync: false
       - key: ELEVENLABS_VOICE_ID
         sync: false
+      - key: ELEVENLABS_AGENT_ID
+        sync: false
 
 databases:
   - name: snapkey-db

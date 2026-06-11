@@ -40,3 +40,33 @@ def test_voice_endpoint_streams_audio(monkeypatch):
     assert response.status_code == 200
     assert response.headers["content-type"] == "audio/mpeg"
     assert response.content == b"first-audio-chunksecond-audio-chunk"
+
+
+def test_live_conversation_token_requires_authentication():
+    with TestClient(app) as client:
+        response = client.post("/api/voice/conversation-token")
+    assert response.status_code == 401
+
+
+def test_live_conversation_token_is_created_server_side(monkeypatch):
+    from app.api import voice
+
+    async def fake_token(participant_name):
+        assert participant_name
+        assert participant_name != "live@example.com"
+        return "short-lived-webrtc-token"
+
+    monkeypatch.setattr(voice, "live_agent_ready", lambda: True)
+    monkeypatch.setattr(voice, "create_conversation_token", fake_token)
+    with TestClient(app) as client:
+        token = client.post(
+            "/api/auth/signup",
+            json={"email": "live@example.com", "password": "password123"},
+        ).json()["access_token"]
+        response = client.post(
+            "/api/voice/conversation-token",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"token": "short-lived-webrtc-token"}

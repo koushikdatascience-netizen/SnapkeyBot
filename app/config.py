@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 15_000_000
     elevenlabs_api_key: str = ""
     elevenlabs_voice_id: str = ""
+    elevenlabs_agent_id: str = ""
     elevenlabs_model_id: str = "eleven_flash_v2_5"
     elevenlabs_output_format: str = "mp3_22050_32"
     elevenlabs_language_code: str = ""

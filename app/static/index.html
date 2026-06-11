@@ -16,7 +16,7 @@
     <span class="status" id="connection-status"><i></i> Connecting</span>
     <div class="mode-switch hidden" id="mode-switch" aria-label="Response mode">
       <button class="active" id="text-mode" onclick="setResponseMode('text')">Text</button>
-      <button id="voice-mode" onclick="setResponseMode('voice')">Live voice</button>
+      <button id="voice-mode" onclick="openLiveAgent()">Talk live</button>
     </div>
     <button class="ghost hidden" id="stop-voice" onclick="stopVoice()">Stop voice</button>
     <button class="ghost hidden" id="logout-button" onclick="logout()">Log out</button>
@@ -67,6 +67,27 @@
       <p class="privacy-note">Human-assisted preview. Avoid sharing sensitive information.</p>
     </section>
   </main>
+  <section class="live-agent hidden" id="live-agent" aria-live="polite">
+    <div class="live-agent-top">
+      <a class="brand" href="/"><span class="brand-mark">S</span><span>Snapkey</span></a>
+      <span class="live-session-status" id="live-session-status">Ready to connect</span>
+      <button class="ghost" onclick="closeLiveAgent()">Close</button>
+    </div>
+    <div class="live-agent-presence" id="live-agent-presence" data-state="idle">
+      <div class="character-halo"><div class="character-core"><span>S</span></div></div>
+      <p class="kicker">SNAPKEY LIVE</p>
+      <h2 id="live-agent-title">Let’s talk.</h2>
+      <p id="live-caption">A continuous, interruptible voice conversation.</p>
+      <div class="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="live-agent-controls">
+      <button class="live-start" id="live-start" onclick="startLiveConversation()">Start conversation</button>
+      <button class="round-control hidden" id="live-mute" onclick="toggleLiveMute()">Mute</button>
+      <button class="round-control end hidden" id="live-end" onclick="endLiveConversation()">End</button>
+    </div>
+    <p class="privacy-note live-note">Microphone audio is processed by ElevenLabs during the live session.</p>
+  </section>
   <script src="/static/app.js"></script>
+  <script type="module" src="/static/live-agent.js"></script>
 </body>
 </html>

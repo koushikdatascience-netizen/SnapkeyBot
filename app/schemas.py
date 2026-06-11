@@ -38,6 +38,11 @@ class AppConfigResponse(BaseModel):
     concierge_ready: bool
     max_upload_bytes: int
     voice_ready: bool
+    live_agent_ready: bool
+
+
+class LiveConversationTokenResponse(BaseModel):
+    token: str
 
 
 class SpeechRequest(BaseModel):

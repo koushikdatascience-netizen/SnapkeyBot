@@ -6,6 +6,7 @@ let recorder = null;
 let recordingChunks = [];
 let maxUploadBytes = 15000000;
 let voiceReady = false;
+let liveAgentReady = false;
 let responseMode = localStorage.getItem("responseMode") || "text";
 let currentAudio = null;
 let activityTimer = null;
@@ -26,6 +27,7 @@ async function loadConfig() {
     conciergeReady = config.concierge_ready;
     maxUploadBytes = config.max_upload_bytes || maxUploadBytes;
     voiceReady = config.voice_ready;
+    liveAgentReady = config.live_agent_ready;
     setConnectionStatus(conciergeReady ? "Concierge online" : "Setup required", conciergeReady);
     document.querySelector("#connection-warning").classList.toggle("hidden", conciergeReady);
     updateModeControls();
@@ -314,9 +316,22 @@ function formatBytes(bytes) {
 function updateModeControls() {
   document.querySelector("#text-mode").classList.toggle("active", responseMode === "text");
   const voiceButton = document.querySelector("#voice-mode");
-  voiceButton.classList.toggle("active", responseMode === "voice");
-  voiceButton.disabled = !voiceReady;
-  voiceButton.title = voiceReady ? "Speak concierge replies" : "Voice is not configured";
+  voiceButton.classList.remove("active");
+  voiceButton.disabled = !liveAgentReady;
+  voiceButton.title = liveAgentReady ? "Start a realtime voice conversation" : "Add ELEVENLABS_AGENT_ID to enable live conversation";
+}
+
+function openLiveAgent() {
+  if (!liveAgentReady) {
+    createMessage("assistant", "Live conversation is not configured yet. Add your ElevenLabs Agent ID.");
+    return;
+  }
+  document.querySelector("#live-agent").classList.remove("hidden");
+}
+
+async function closeLiveAgent() {
+  await window.endLiveConversation?.();
+  document.querySelector("#live-agent").classList.add("hidden");
 }
 
 function setResponseMode(mode) {
@@ -498,6 +513,16 @@ function escapeHtml(value) {
   node.textContent = value;
   return node.innerHTML;
 }
+
+function prefillPrompt(value) {
+  closeLiveAgent();
+  const prompt = document.querySelector("#prompt");
+  prompt.value = value;
+  resizeComposer();
+  prompt.focus();
+}
+
+window.SnapkeyUI = { api, renderPresentation, prefillPrompt };
 
 async function streamAudioResponse(response) {
   if (!window.MediaSource || !MediaSource.isTypeSupported("audio/mpeg")) {

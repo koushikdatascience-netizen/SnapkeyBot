@@ -11,6 +11,28 @@ def voice_ready() -> bool:
     return bool(settings.elevenlabs_api_key and settings.elevenlabs_voice_id)
 
 
+def live_agent_ready() -> bool:
+    settings = get_settings()
+    return bool(settings.elevenlabs_api_key and settings.elevenlabs_agent_id)
+
+
+async def create_conversation_token(participant_name: str) -> str:
+    settings = get_settings()
+    if not live_agent_ready():
+        raise RuntimeError("Live agent is not configured")
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.get(
+            "https://api.elevenlabs.io/v1/convai/conversation/token",
+            params={
+                "agent_id": settings.elevenlabs_agent_id,
+                "participant_name": participant_name[:100],
+            },
+            headers={"xi-api-key": settings.elevenlabs_api_key},
+        )
+        response.raise_for_status()
+        return response.json()["token"]
+
+
 @asynccontextmanager
 async def stream_speech(text: str) -> AsyncIterator[httpx.Response]:
     settings = get_settings()

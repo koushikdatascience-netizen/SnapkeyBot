@@ -9,3 +9,4 @@ pytest-cache-files-*/
 *.db-*
 *.log
 uploads/
+node_modules/

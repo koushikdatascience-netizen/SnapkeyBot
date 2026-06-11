@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.database import create_tables
 from app.schemas import AppConfigResponse
 from app.services.telegram import telegram_webhook_ready
-from app.services.elevenlabs import voice_ready
+from app.services.elevenlabs import live_agent_ready, voice_ready
 
 
 @asynccontextmanager
@@ -53,6 +53,7 @@ async def app_config() -> AppConfigResponse:
         concierge_ready=await telegram_webhook_ready() if settings.concierge_mode else True,
         max_upload_bytes=settings.max_upload_bytes,
         voice_ready=voice_ready(),
+        live_agent_ready=live_agent_ready(),
     )
 
 

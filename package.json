@@ -1,0 +1,13 @@
+{
+  "name": "snapkey-live-agent",
+  "private": true,
+  "scripts": {
+    "build:live-agent": "esbuild app/static/live-agent-source.js --bundle --minify --format=esm --outfile=app/static/live-agent.js"
+  },
+  "dependencies": {
+    "@elevenlabs/client": "^0.11.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

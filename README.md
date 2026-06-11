@@ -110,6 +110,44 @@ Set `ELEVENLABS_LANGUAGE_CODE=hi` only when replies should consistently be Hindi
 
 After saving the variables, deploy the latest commit and refresh the site. Enable **Live voice** once and every new reply will speak automatically.
 
+## Realtime ElevenLabs Agent
+
+The **Talk live** experience is a continuous WebRTC conversation with interruption, live captions, listening/speaking states, and client tools that transform the workspace.
+
+1. Create an ElevenLabs Agent and copy its Agent ID.
+2. Add this Railway variable:
+
+```env
+ELEVENLABS_AGENT_ID=agent_your_agent_id
+```
+
+3. In the ElevenLabs Agent dashboard, add these client tools. Their names must match exactly:
+
+```text
+show_email_workspace
+show_product_workspace
+show_video_workspace
+show_progress_workspace
+show_brief_workspace
+request_human_operator
+```
+
+Suggested parameters:
+
+- Workspace tools: optional strings `title`, `summary`, `subject`, `from`, `to`, `body`, and `status`.
+- `request_human_operator`: required string `request`.
+
+Tell the agent in its system prompt to call the matching workspace tool whenever the topic changes. For any real send/delete/purchase action, it must ask for confirmation and wait for a server tool result before claiming completion.
+
+The browser requests a short-lived conversation token from `/api/voice/conversation-token`. The ElevenLabs API key always remains on the server.
+
+Rebuild the bundled browser client after editing `app/static/live-agent-source.js`:
+
+```powershell
+npm install
+npm run build:live-agent
+```
+
 ## Local Development
 
 ```powershell
