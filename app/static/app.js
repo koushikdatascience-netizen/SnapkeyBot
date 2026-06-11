@@ -37,6 +37,16 @@ async function api(path, options = {}) {
   if (token) options.headers.Authorization = `Bearer ${token}`;
   const response = await fetch(`/api${path}`, options);
   const body = await response.json().catch(() => ({}));
+  if (response.status === 401 && token) {
+    localStorage.removeItem("token");
+    token = null;
+    document.querySelector("#workspace").classList.add("hidden");
+    document.querySelector("#logout-button").classList.add("hidden");
+    document.querySelector("#auth").classList.remove("hidden");
+    const error = document.querySelector("#auth-error");
+    error.textContent = "Your session expired. Please log in again.";
+    error.classList.remove("hidden");
+  }
   if (!response.ok) throw new Error(body.detail || "Request failed");
   return body;
 }
