@@ -11,6 +11,7 @@ let responseMode = localStorage.getItem("responseMode") || "text";
 let currentAudio = null;
 let activityTimer = null;
 let activeTaskPrompt = "";
+window.SnapkeyConfig = {};
 
 initialize();
 
@@ -28,6 +29,7 @@ async function loadConfig() {
     maxUploadBytes = config.max_upload_bytes || maxUploadBytes;
     voiceReady = config.voice_ready;
     liveAgentReady = config.live_agent_ready;
+    window.SnapkeyConfig = config;
     setConnectionStatus(conciergeReady ? "Concierge online" : "Setup required", conciergeReady);
     document.querySelector("#connection-warning").classList.toggle("hidden", conciergeReady);
     updateModeControls();

@@ -172,3 +172,27 @@ def test_unknown_retail_report_is_rejected(authenticated_client, monkeypatch):
 
     assert response.status_code == 422
     assert "Unknown retail report" in response.json()["detail"]
+
+
+def test_report_diagnostics_checks_connection(authenticated_client, monkeypatch):
+    from app.api import integrations
+
+    async def fake_diagnostics(tenant_id):
+        assert tenant_id == "shop-1"
+        return {
+            "connected": True,
+            "tenant_assigned": True,
+            "views": ["snapkey_inventory", "snapkey_sales"],
+            "missing_views": [],
+            "limits": {"max_days": 90, "max_points": 50, "timeout_seconds": 8},
+        }
+
+    monkeypatch.setattr(integrations, "reporting_ready", lambda: True)
+    monkeypatch.setattr(integrations, "report_tenant_for", lambda _email: "shop-1")
+    monkeypatch.setattr(integrations, "report_connection_diagnostics", fake_diagnostics)
+    client, headers = authenticated_client
+
+    response = client.get("/api/integrations/reports/diagnostics", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["missing_views"] == []

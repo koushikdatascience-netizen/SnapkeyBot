@@ -39,6 +39,8 @@ class AppConfigResponse(BaseModel):
     max_upload_bytes: int
     voice_ready: bool
     live_agent_ready: bool
+    monitoring_camera_urls: list[str] = Field(default_factory=list)
+    monitoring_screen_url: str = ""
 
 
 class LiveConversationTokenResponse(BaseModel):

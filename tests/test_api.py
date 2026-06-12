@@ -124,3 +124,18 @@ def test_config_exposes_upload_limit(client):
     response = client.get("/api/config")
     assert response.status_code == 200
     assert response.json()["max_upload_bytes"] > 0
+
+
+def test_config_exposes_monitoring_video_urls(client, monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main.settings, "monitoring_camera_urls", "https://cdn.example/c1.mp4,https://cdn.example/c2.mp4")
+    monkeypatch.setattr(main.settings, "monitoring_screen_url", "https://cdn.example/screen.mp4")
+
+    response = client.get("/api/config")
+
+    assert response.json()["monitoring_camera_urls"] == [
+        "https://cdn.example/c1.mp4",
+        "https://cdn.example/c2.mp4",
+    ]
+    assert response.json()["monitoring_screen_url"].endswith("screen.mp4")

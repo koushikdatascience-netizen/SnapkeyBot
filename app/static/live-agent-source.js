@@ -463,12 +463,14 @@ function renderMonitoring(workspace, data) {
   grid.className = `monitoring-grid${data.selected_camera ? " focused" : ""}`;
   simulatedCameras.forEach((camera, index) => {
     const tile = document.createElement("button");
+    const feedUrl = window.SnapkeyConfig?.monitoring_camera_urls?.[index] || "";
     tile.type = "button";
     tile.className = `camera-tile camera-${camera.id} ${camera.status}`;
     if (data.selected_camera && data.selected_camera !== camera.id) tile.classList.add("camera-hidden");
     tile.onclick = () => renderLiveWorkspace({ ...data, selected_camera: data.selected_camera === camera.id ? 0 : camera.id });
     tile.innerHTML = `
       <div class="camera-scene">
+        ${feedUrl ? "<video muted autoplay loop playsinline preload='metadata'></video><span class='camera-feed-state'>Loading video feed...</span>" : ""}
         <span class="camera-grid-lines"></span>
         <span class="camera-person person-${index + 1}"></span>
         <span class="detection-box"><b></b></span>
@@ -479,6 +481,19 @@ function renderMonitoring(workspace, data) {
         <span><small></small><strong></strong></span>
         <span><small></small><strong></strong></span>
       </div>`;
+    if (feedUrl) {
+      const video = tile.querySelector("video");
+      const state = tile.querySelector(".camera-feed-state");
+      video.src = feedUrl;
+      video.onplaying = () => state.classList.add("hidden");
+      video.onerror = () => {
+        state.textContent = "Video unavailable - showing fallback";
+        window.setTimeout(() => state.classList.add("hidden"), 2500);
+      };
+      video.play().catch(() => {
+        state.textContent = "Tap camera to start video";
+      });
+    }
     tile.querySelector(".camera-meta span:first-child small").textContent = `CAM ${camera.id} · ${camera.name}`;
     tile.querySelector(".camera-meta span:first-child strong").textContent = camera.person;
     tile.querySelector(".camera-meta span:last-child small").textContent = camera.zone;
@@ -511,6 +526,28 @@ function renderMonitoring(workspace, data) {
   screen.innerHTML = `
     <div><span></span><small>PRIYA M. · POS SCREEN SHARE · SIMULATED</small></div>
     <section><aside></aside><main><span></span><span></span><span></span><span></span></main></section>`;
+  const screenUrl = window.SnapkeyConfig?.monitoring_screen_url || "";
+  if (screenUrl) {
+    screen.querySelector("section").classList.add("hidden");
+    const video = document.createElement("video");
+    const state = document.createElement("span");
+    video.muted = true;
+    video.autoplay = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = "metadata";
+    video.src = screenUrl;
+    state.className = "screen-feed-state";
+    state.textContent = "Loading screen demo...";
+    video.onplaying = () => state.classList.add("hidden");
+    video.onerror = () => {
+      state.textContent = "Screen video unavailable";
+    };
+    video.play().catch(() => {
+      state.textContent = "Tap to start screen video";
+    });
+    screen.append(video, state);
+  }
   workspace.append(screen);
   updateMonitoringClocks();
   monitoringClock = window.setInterval(updateMonitoringClocks, 1000);

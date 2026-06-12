@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     report_max_days: int = 90
     report_max_points: int = 50
     report_query_timeout_seconds: int = 8
+    monitoring_camera_urls: str = ""
+    monitoring_screen_url: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -56,6 +58,13 @@ class Settings(BaseSettings):
             return value.replace("postgres://", "postgresql+asyncpg://", 1)
         if value.startswith("postgresql://"):
             return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
+
+    @field_validator("report_database_url")
+    @classmethod
+    def normalize_report_database_url(cls, value: str) -> str:
+        if value.startswith("mysql://"):
+            return value.replace("mysql://", "mysql+asyncmy://", 1)
         return value
 
 

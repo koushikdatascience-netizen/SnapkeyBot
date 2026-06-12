@@ -16,6 +16,9 @@ REPORT_MAX_POINTS=50
 REPORT_QUERY_TIMEOUT_SECONDS=8
 ```
 
+If the username or password contains characters such as `@`, `:`, `/`, or `#`, URL-encode those characters before
+placing them in `REPORT_DATABASE_URL`.
+
 For a central database serving multiple retailers, replace `REPORT_TENANT_ID` with a server-side user mapping:
 
 ```env
@@ -26,6 +29,29 @@ The voice agent cannot choose or override the tenant ID.
 
 Do not expose MySQL port `3306` publicly. Create a dedicated MySQL user with `SELECT` permission only on the two
 reporting views below.
+
+Example read-only MySQL user:
+
+```sql
+CREATE USER 'snapkey_reports'@'%' IDENTIFIED BY 'replace-with-a-long-password';
+GRANT SELECT ON madhushala.snapkey_sales TO 'snapkey_reports'@'%';
+GRANT SELECT ON madhushala.snapkey_inventory TO 'snapkey_reports'@'%';
+FLUSH PRIVILEGES;
+```
+
+After configuring Railway, sign in to Snapkey and call:
+
+```text
+GET /api/integrations/reports/diagnostics
+Authorization: Bearer <normal Snapkey login token>
+```
+
+A ready response has `"connected": true` and an empty `"missing_views"` array. This check executes only `SELECT 1`
+and checks view names; it does not scan sales data.
+
+If the Madhushala database exists only on a shop-local Windows computer, Railway cannot reach `localhost`. Use a
+private VPN such as Tailscale/WireGuard or a small outbound Snapkey connector beside the database. Do not open MySQL
+port `3306` to the public internet.
 
 ## Required View Contract
 

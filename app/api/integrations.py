@@ -30,7 +30,13 @@ from app.services.google_integration import (
     google_request,
     save_google_connection,
 )
-from app.services.retail_reports import report_catalog, report_tenant_for, reporting_ready, run_retail_report
+from app.services.retail_reports import (
+    report_catalog,
+    report_connection_diagnostics,
+    report_tenant_for,
+    reporting_ready,
+    run_retail_report,
+)
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -86,6 +92,20 @@ async def google_status(
 @router.get("/reports/status")
 async def reports_status(user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
     return {"configured": reporting_ready(), "reports": report_catalog()}
+
+
+@router.get("/reports/diagnostics")
+async def reports_diagnostics(user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
+    if not reporting_ready():
+        raise HTTPException(status_code=503, detail="Retail reporting database is not configured")
+    try:
+        return await report_connection_diagnostics(report_tenant_for(user.email))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except TimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/google/connect")

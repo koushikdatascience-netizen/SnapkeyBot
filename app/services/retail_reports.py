@@ -114,6 +114,45 @@ def _json_value(value: Any) -> Any:
     return value
 
 
+async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
+    settings = get_settings()
+
+    async def execute() -> dict[str, Any]:
+        async with _report_engine().connect() as connection:
+            await connection.execute(text("SELECT 1"))
+            result = await connection.execute(
+                text(
+                    """
+                    SELECT table_name
+                    FROM information_schema.views
+                    WHERE table_schema = DATABASE()
+                      AND table_name IN ('snapkey_sales', 'snapkey_inventory')
+                    """
+                )
+            )
+            views = sorted(str(row[0]) for row in result.all())
+            return {
+                "connected": True,
+                "tenant_assigned": bool(tenant_id),
+                "views": views,
+                "missing_views": sorted({"snapkey_sales", "snapkey_inventory"} - set(views)),
+                "limits": {
+                    "max_days": settings.report_max_days,
+                    "max_points": settings.report_max_points,
+                    "timeout_seconds": settings.report_query_timeout_seconds,
+                },
+            }
+
+    try:
+        return await asyncio.wait_for(execute(), timeout=settings.report_query_timeout_seconds)
+    except TimeoutError as exc:
+        raise TimeoutError(
+            f"Database check exceeded the {settings.report_query_timeout_seconds}-second limit"
+        ) from exc
+    except SQLAlchemyError as exc:
+        raise RuntimeError("Unable to connect to the retail reporting database") from exc
+
+
 async def run_retail_report(
     report_name: str,
     *,

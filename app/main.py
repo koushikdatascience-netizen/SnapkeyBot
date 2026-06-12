@@ -55,6 +55,10 @@ async def app_config() -> AppConfigResponse:
         max_upload_bytes=settings.max_upload_bytes,
         voice_ready=voice_ready(),
         live_agent_ready=live_agent_ready(),
+        monitoring_camera_urls=[
+            url.strip() for url in settings.monitoring_camera_urls.split(",") if url.strip()
+        ][:3],
+        monitoring_screen_url=settings.monitoring_screen_url,
     )
 
 
