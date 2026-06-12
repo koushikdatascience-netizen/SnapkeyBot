@@ -6,6 +6,7 @@ let integrationToken = "";
 let activeBrowserSessionId = "";
 let browserStarting = false;
 let lastBrowserIntent = "";
+let lastYouTubeIntent = "";
 
 function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
@@ -105,11 +106,13 @@ async function runIntegration(parameters = {}) {
     confirmed: Boolean(parameters.confirmed),
   });
   if (tool === "youtube_search" && result.videos?.length) {
+    const video = result.videos[0];
     renderLiveWorkspace({
       type: "youtube",
-      title: result.videos[0].title,
-      summary: `Playing from ${result.videos[0].channel}`,
-      embed_url: result.videos[0].embed_url,
+      title: video.title,
+      summary: `Playing from ${video.channel}`,
+      embed_url: video.embed_url,
+      watch_url: `https://www.youtube.com/watch?v=${video.id}`,
     });
   } else if (tool === "calendar_events") {
     renderLiveWorkspace({
@@ -199,12 +202,11 @@ async function navigateActiveBrowser(url) {
 function browserIntentUrl(text) {
   const value = text.toLowerCase().trim();
   if (!/(open|browse|visit|search|google|youtube|website|web)/.test(value)) return "";
+  if (/\b(youtube|play)\b/.test(value)) return "";
   const explicitUrl = text.match(/https?:\/\/\S+/i)?.[0];
   if (explicitUrl) return explicitUrl;
   const domain = text.match(/\b(?:www\.)?[a-z0-9-]+\.(?:com|in|org|net|io|ai)\b/i)?.[0];
   if (domain) return `https://${domain}`;
-  const youtubeQuery = text.match(/(?:youtube|play)(?:\s+for)?\s+(.+)/i)?.[1];
-  if (youtubeQuery) return `https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeQuery)}`;
   const searchQuery = text
     .replace(/^(please\s+)?(open|browse|visit|go to|google|search(?: for)?|look up)\s+/i, "")
     .trim();
@@ -214,7 +216,54 @@ function browserIntentUrl(text) {
   return "https://www.google.com";
 }
 
+function youtubeIntentQuery(text) {
+  if (!/\b(youtube|play|video)\b/i.test(text)) return "";
+  return text
+    .replace(/^(please\s+)?(open|search|find|show|play|watch)\s+/i, "")
+    .replace(/\s+(on|in)\s+youtube\s*$/i, "")
+    .replace(/^youtube\s+/i, "")
+    .trim();
+}
+
+async function handleAutomaticYouTubeIntent(text) {
+  const query = youtubeIntentQuery(text);
+  if (!query || query === lastYouTubeIntent) return false;
+  lastYouTubeIntent = query;
+  renderLiveWorkspace({
+    type: "progress",
+    title: "Searching YouTube",
+    summary: `Finding the best result for “${query}”…`,
+    steps: ["Connecting to YouTube", "Checking playable videos", "Preparing the player"],
+  });
+  try {
+    const result = await runIntegration({
+      tool_name: "youtube_search",
+      arguments: { query, max_results: 5 },
+    });
+    updateAgentContext(
+      `Snapkey searched YouTube successfully and displayed the top playable result for "${query}". ` +
+      "Tell the user the video is ready beside you."
+    );
+    return result;
+  } catch (error) {
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    renderLiveWorkspace({
+      type: "youtube",
+      title: "Open YouTube results",
+      summary: error?.message || "YouTube search needs attention.",
+      watch_url: searchUrl,
+      details: "Use the button below while the YouTube API key is checked.",
+    });
+    updateAgentContext(
+      `YouTube search could not complete because: ${error?.message || "the integration failed"}. ` +
+      "A direct YouTube search button is visible. Explain that briefly."
+    );
+    return false;
+  }
+}
+
 async function handleAutomaticBrowserIntent(text) {
+  if (youtubeIntentQuery(text)) return;
   const url = browserIntentUrl(text);
   const intentKey = `${text}|${url}`;
   if (!url || intentKey === lastBrowserIntent || browserStarting) return;
@@ -288,23 +337,61 @@ function renderLiveWorkspace(data) {
 
 function renderYouTube(workspace, data) {
   const url = data.embed_url || data.url;
-  if (!url) return renderDetailList(workspace, parseDetails(data.details));
+  const watchUrl = data.watch_url || url;
+  if (!url) return renderMediaFallback(workspace, data, watchUrl, "Open YouTube");
+  const panel = document.createElement("div");
+  panel.className = "live-media-panel";
+  const state = document.createElement("div");
+  state.className = "live-media-state";
+  state.textContent = "Loading the video…";
   const frame = document.createElement("iframe");
   frame.className = "live-embed";
   frame.src = url;
   frame.allow = "autoplay; encrypted-media; picture-in-picture";
   frame.allowFullscreen = true;
-  workspace.append(frame);
+  frame.onload = () => state.classList.add("hidden");
+  frame.onerror = () => {
+    state.textContent = "The embedded player could not load. Open it directly instead.";
+  };
+  panel.append(state, frame);
+  workspace.append(panel);
+  if (watchUrl) appendExternalLink(workspace, watchUrl, "Open on YouTube");
 }
 
 function renderBrowser(workspace, data) {
   const url = data.live_view_url || data.url;
   if (!url) return renderDetailList(workspace, parseDetails(data.details));
+  const panel = document.createElement("div");
+  panel.className = "live-media-panel";
+  const state = document.createElement("div");
+  state.className = "live-media-state";
+  state.textContent = "Connecting to the live browser…";
   const frame = document.createElement("iframe");
   frame.className = "live-embed browser-live-view";
   frame.src = url;
   frame.allow = "clipboard-read; clipboard-write";
-  workspace.append(frame);
+  frame.onload = () => state.classList.add("hidden");
+  frame.onerror = () => {
+    state.textContent = "The live browser preview could not load here. Open it in a new tab.";
+  };
+  panel.append(state, frame);
+  workspace.append(panel);
+  appendExternalLink(workspace, url, "Open live browser");
+}
+
+function appendExternalLink(workspace, url, label) {
+  const link = document.createElement("a");
+  link.className = "live-media-link";
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = label;
+  workspace.append(link);
+}
+
+function renderMediaFallback(workspace, data, url, label) {
+  renderDetailList(workspace, parseDetails(data.details || data.summary));
+  if (url) appendExternalLink(workspace, url, label);
 }
 
 function liveWorkspaceTitle(type) {
@@ -420,7 +507,10 @@ window.startLiveConversation = async function startLiveConversation() {
       onMessage: message => {
         const text = message.message || message.text;
         if (text) document.querySelector("#live-caption").textContent = text;
-        if (text && message.source === "user") handleAutomaticBrowserIntent(text);
+        if (text && message.source === "user") {
+          handleAutomaticYouTubeIntent(text);
+          handleAutomaticBrowserIntent(text);
+        }
       },
       onModeChange: mode => {
         const value = typeof mode === "string" ? mode : mode.mode;

@@ -92,9 +92,15 @@ async function connectGoogle() {
   const button = document.querySelector("#google-connect");
   try {
     const status = await api("/integrations/google/status");
+    if (status.redirect_uri) {
+      button.title = `Google Cloud authorized redirect URI must exactly match: ${status.redirect_uri}`;
+    }
     if (status.connected) {
       button.textContent = "Google connected";
       return;
+    }
+    if (!status.configured) {
+      throw new Error("Google is not configured on Railway. Set PUBLIC_URL, GOOGLE_CLIENT_ID, and GOOGLE_CLIENT_SECRET.");
     }
     const result = await api("/integrations/google/connect");
     location.href = result.authorization_url;

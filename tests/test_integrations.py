@@ -6,6 +6,17 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+def test_google_redirect_uri_uses_public_url(monkeypatch):
+    from app.services import google_integration
+
+    settings = google_integration.get_settings()
+    monkeypatch.setattr(settings, "public_url", "https://snapkey.example.com/")
+
+    assert google_integration.google_redirect_uri() == (
+        "https://snapkey.example.com/api/integrations/google/callback"
+    )
+
+
 @pytest.fixture
 def authenticated_client():
     with TestClient(app) as client:

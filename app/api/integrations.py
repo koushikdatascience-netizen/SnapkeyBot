@@ -25,6 +25,7 @@ from app.services.google_integration import (
     authorization_url,
     encoded_email,
     exchange_code,
+    google_redirect_uri,
     google_ready,
     google_request,
     save_google_connection,
@@ -65,7 +66,7 @@ async def integration_user(
 async def google_status(
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> dict[str, bool]:
+) -> dict[str, Any]:
     connection = await db.scalar(
         select(ToolConnection).where(
             ToolConnection.user_id == user.id,
@@ -73,7 +74,12 @@ async def google_status(
             ToolConnection.enabled.is_(True),
         )
     )
-    return {"configured": google_ready(), "connected": bool(connection)}
+    return {
+        "configured": google_ready(),
+        "connected": bool(connection),
+        "redirect_uri": google_redirect_uri() if get_settings().public_url else "",
+        "youtube_configured": bool(get_settings().youtube_api_key),
+    }
 
 
 @router.get("/google/connect")
@@ -81,7 +87,10 @@ async def google_connect(user: Annotated[User, Depends(get_current_user)]) -> di
     if not google_ready():
         raise HTTPException(status_code=503, detail="Google OAuth is not configured")
     state = create_purpose_token(user.id, "google-oauth", minutes=10)
-    return {"authorization_url": authorization_url(state, user.email)}
+    return {
+        "authorization_url": authorization_url(state, user.email),
+        "redirect_uri": google_redirect_uri(),
+    }
 
 
 @router.get("/google/callback", include_in_schema=False)

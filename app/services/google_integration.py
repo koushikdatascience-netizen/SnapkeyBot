@@ -26,11 +26,16 @@ def google_ready() -> bool:
     return bool(settings.google_client_id and settings.google_client_secret and settings.public_url)
 
 
+def google_redirect_uri() -> str:
+    settings = get_settings()
+    return f"{settings.public_url.rstrip('/')}/api/integrations/google/callback"
+
+
 def authorization_url(state: str, login_hint: str = "") -> str:
     settings = get_settings()
     params = {
         "client_id": settings.google_client_id,
-        "redirect_uri": f"{settings.public_url.rstrip('/')}/api/integrations/google/callback",
+        "redirect_uri": google_redirect_uri(),
         "response_type": "code",
         "scope": " ".join(GOOGLE_SCOPES),
         "access_type": "offline",
@@ -52,7 +57,7 @@ async def exchange_code(code: str) -> dict[str, Any]:
                 "code": code,
                 "client_id": settings.google_client_id,
                 "client_secret": settings.google_client_secret,
-                "redirect_uri": f"{settings.public_url.rstrip('/')}/api/integrations/google/callback",
+                "redirect_uri": google_redirect_uri(),
                 "grant_type": "authorization_code",
             },
         )
