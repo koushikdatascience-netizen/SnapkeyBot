@@ -32,6 +32,25 @@ function setConnected(connected) {
   document.querySelector("#live-end").classList.toggle("hidden", !connected);
 }
 
+function setWorkspaceVisible(visible) {
+  const body = document.querySelector(".live-agent-body");
+  const workspace = document.querySelector("#live-workspace");
+  const toggle = document.querySelector("#live-workspace-toggle");
+  workspace.classList.toggle("hidden", !visible);
+  toggle.classList.toggle("hidden", !visible);
+  body.classList.toggle("has-workspace", visible);
+  if (visible && window.matchMedia("(max-width: 620px)").matches) body.classList.add("mobile-workspace-open");
+  if (!visible) body.classList.remove("mobile-workspace-open");
+}
+
+window.toggleLiveWorkspace = function toggleLiveWorkspace() {
+  document.querySelector(".live-agent-body").classList.toggle("mobile-workspace-open");
+};
+
+window.closeLiveWorkspace = function closeLiveWorkspace() {
+  setWorkspaceVisible(false);
+};
+
 function showWorkspace(parameters = {}) {
   const type = parameters.type || "brief";
   renderLiveWorkspace({ type, ...parameters });
@@ -242,6 +261,7 @@ function renderLiveWorkspace(data) {
   const workspace = document.querySelector("#live-workspace");
   workspace.className = `live-workspace ${data.type || "brief"}`;
   workspace.replaceChildren();
+  setWorkspaceVisible(true);
 
   const header = document.createElement("div");
   header.className = "live-workspace-header";
@@ -251,7 +271,11 @@ function renderLiveWorkspace(data) {
   title.textContent = data.title || liveWorkspaceTitle(data.type);
   const summary = document.createElement("p");
   summary.textContent = data.summary || data.body || "Ready while we continue talking.";
-  header.append(label, title, summary);
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "Close workspace";
+  close.onclick = window.closeLiveWorkspace;
+  header.append(label, close, title, summary);
   workspace.append(header);
 
   if (data.type === "calendar") renderCalendar(workspace, data);
@@ -351,6 +375,7 @@ function requestConfirmation(parameters = {}) {
     const workspace = document.querySelector("#live-workspace");
     workspace.className = "live-workspace confirmation";
     workspace.replaceChildren();
+    setWorkspaceVisible(true);
     const panel = document.createElement("div");
     panel.className = "live-confirmation";
     panel.innerHTML = "<small>CONFIRM BEFORE ACTION</small><h3></h3><p></p><div><button class='approve'>Confirm</button><button>Cancel</button></div>";
