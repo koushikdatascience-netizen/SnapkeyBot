@@ -198,6 +198,9 @@ BROWSERBASE_API_KEY=<Browserbase API key>
 BROWSERBASE_PROJECT_ID=<Browserbase project ID>
 BROWSERBASE_REGION=ap-southeast-1
 CREDENTIAL_ENCRYPTION_KEY=<stable Fernet key>
+REPORT_CONNECTOR_URL=<Cloudflare Tunnel URL for local SQL Server connector>
+REPORT_CONNECTOR_SECRET=<shared connector secret>
+REPORT_TENANT_ID=<shop identifier>
 ```
 
 Enable Gmail API, Google Calendar API, and YouTube Data API v3 in Google Cloud. Add this exact authorized redirect URI to the Google OAuth web client:

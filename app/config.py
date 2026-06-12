@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     browserbase_project_id: str = ""
     browserbase_region: str = "ap-southeast-1"
     report_database_url: str = ""
+    report_connector_url: str = ""
+    report_connector_secret: str = ""
     report_tenant_id: str = ""
     report_tenant_map_json: str = ""
     report_max_days: int = 90

@@ -1,85 +1,121 @@
-# Madhushala SQL Server Connector
+# Madhushala Local SQL Server Connector
 
-Do not expose a shop's SQL Server port to the public internet. Install a small connector beside Madhushala POS that makes outbound HTTPS requests to Snapkey.
-
-## Recommended flow
-
-```text
-Madhushala SQL Server
-        |
-Read-only connector Windows service
-        |
-Outbound HTTPS / VPN
-        |
-Snapkey Railway API
-        |
-Voice agent and live workspaces
-```
-
-The connector should use a dedicated SQL Server login with access only to approved reporting views and stored procedures. It should not receive unrestricted table-write permissions.
-
-## Reporting operations
-
-Expose named operations rather than arbitrary SQL:
+This connector lets Railway Snapkey query a Microsoft SQL Server running on a local Windows POS/server computer
+without exposing SQL Server port `1433`.
 
 ```text
-sales_summary
-top_products
-low_stock
-cashier_variance
-supplier_outstanding
-stock_movement
-daily_closing
+Railway Snapkey -> HTTPS Cloudflare Tunnel -> localhost:8090 connector -> local SQL Server
 ```
 
-Each operation maps to a reviewed stored procedure or parameterized query. Snapkey sends the operation name and validated date/shop filters; the connector returns JSON.
+The connector accepts only four allowlisted, read-only reports. It never accepts raw SQL.
 
-Example request:
+## 1. Prepare SQL Server
+
+Install Microsoft ODBC Driver 18 for SQL Server on the Windows computer.
+
+Create a read-only login in SQL Server Management Studio:
+
+```sql
+CREATE LOGIN snapkey_reports WITH PASSWORD = 'replace-with-a-long-password';
+USE Madhushala;
+CREATE USER snapkey_reports FOR LOGIN snapkey_reports;
+```
+
+Edit and run [create_reporting_views.sql](../connector/create_reporting_views.sql). Replace the placeholder source
+tables and columns with the real Madhushala schema.
+
+To inspect the real schema before editing the views:
+
+```powershell
+$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost;DATABASE=Madhushala;Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;"
+py -3.12 scripts/inspect_sqlserver_schema.py > sqlserver-schema.json
+```
+
+This reads table/column metadata only. Review `sqlserver-schema.json` and map the actual sales and inventory columns
+in `connector/create_reporting_views.sql`.
+
+## 2. Install And Start The Connector
+
+From the project folder on the SQL Server computer:
+
+```powershell
+py -3.12 -m pip install -e ".[connector]"
+
+$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost;DATABASE=Madhushala;UID=snapkey_reports;PWD=YOUR_PASSWORD;Encrypt=yes;TrustServerCertificate=yes;"
+$env:CONNECTOR_SECRET="generate-one-long-random-secret"
+
+powershell -ExecutionPolicy Bypass -File scripts/run_sqlserver_connector.ps1
+```
+
+The connector listens only on `127.0.0.1:8090`. Test locally:
+
+```powershell
+$env:REPORT_TENANT_ID="shop-001"
+$env:REPORT_CONNECTOR_SECRET=$env:CONNECTOR_SECRET
+py -3.12 scripts/test_sqlserver_connector.py
+```
+
+## 3. Publish Through Cloudflare Tunnel
+
+Install `cloudflared`, authenticate it, and create a named tunnel:
+
+```powershell
+cloudflared tunnel login
+cloudflared tunnel create snapkey-reports
+cloudflared tunnel route dns snapkey-reports reports.yourdomain.com
+```
+
+Create `%USERPROFILE%\.cloudflared\config.yml`:
+
+```yaml
+tunnel: YOUR_TUNNEL_ID
+credentials-file: C:\Users\YOUR_USER\.cloudflared\YOUR_TUNNEL_ID.json
+
+ingress:
+  - hostname: reports.yourdomain.com
+    service: http://127.0.0.1:8090
+  - service: http_status:404
+```
+
+Start the tunnel:
+
+```powershell
+cloudflared tunnel run snapkey-reports
+```
+
+## 4. Configure Railway
+
+Add:
+
+```env
+REPORT_CONNECTOR_URL=https://reports.yourdomain.com
+REPORT_CONNECTOR_SECRET=the-exact-same-connector-secret
+REPORT_TENANT_ID=shop-001
+REPORT_MAX_DAYS=90
+REPORT_MAX_POINTS=50
+REPORT_QUERY_TIMEOUT_SECONDS=8
+```
+
+Leave `REPORT_DATABASE_URL` empty when using the SQL Server connector.
+
+## 5. Verify
+
+Sign in to Snapkey and call:
+
+```text
+GET /api/integrations/reports/diagnostics
+Authorization: Bearer <Snapkey login token>
+```
+
+A ready response has:
 
 ```json
 {
-  "operation": "sales_summary",
-  "shop_id": "SHOP-001",
-  "from": "2026-06-01",
-  "to": "2026-06-12"
+  "connected": true,
+  "missing_views": [],
+  "source": "sqlserver_connector"
 }
 ```
 
-Example response:
-
-```json
-{
-  "total_sales": 84200,
-  "cash": 24100,
-  "upi": 60100,
-  "transactions": 318
-}
-```
-
-## Automation operations
-
-Writes must use separate reviewed commands and require user confirmation:
-
-```text
-prepare_purchase_order
-approve_stock_adjustment
-create_supplier_task
-publish_daily_closing
-```
-
-Never let an LLM generate and execute arbitrary SQL. Use parameterized queries, allowlisted operations, per-shop tenant checks, audit logs, request signatures, and idempotency keys.
-
-## Connectivity choices
-
-1. **Best for many clients:** connector Windows service makes outbound HTTPS calls and receives jobs through polling or a secure WebSocket.
-2. **For managed installations:** connect Railway and the client network through Tailscale/WireGuard, then call a private connector API.
-3. **For reporting only:** replicate approved reporting data to a cloud PostgreSQL warehouse on a schedule.
-
-## Information needed before implementation
-
-- SQL Server version and Windows/server environment
-- Database schema or a sanitized backup
-- Existing reporting views and stored procedures
-- Shop/tenant identifier columns
-- Which operations are read-only versus write operations
-- Expected synchronization frequency
+For production, run both the connector and `cloudflared` as Windows services and restrict the Cloudflare hostname
+with Access service tokens or network policies in addition to the connector secret.

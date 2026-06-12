@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
+import httpx
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
@@ -65,7 +66,10 @@ _engine: AsyncEngine | None = None
 
 def reporting_ready() -> bool:
     settings = get_settings()
-    return bool(settings.report_database_url and (settings.report_tenant_id or settings.report_tenant_map_json))
+    source_ready = bool(settings.report_connector_url and settings.report_connector_secret) or bool(
+        settings.report_database_url
+    )
+    return bool(source_ready and (settings.report_tenant_id or settings.report_tenant_map_json))
 
 
 def report_tenant_for(email: str) -> str:
@@ -116,6 +120,8 @@ def _json_value(value: Any) -> Any:
 
 async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
     settings = get_settings()
+    if settings.report_connector_url:
+        return await _connector_request("/diagnostics", {"tenant_id": tenant_id})
 
     async def execute() -> dict[str, Any]:
         async with _report_engine().connect() as connection:
@@ -167,6 +173,16 @@ async def run_retail_report(
 
     bounded_days = max(1, min(int(days), settings.report_max_days))
     bounded_limit = max(1, min(int(limit), settings.report_max_points))
+    if settings.report_connector_url:
+        return await _connector_request(
+            "/reports/run",
+            {
+                "report_name": report_name,
+                "tenant_id": tenant_id,
+                "days": bounded_days,
+                "limit": bounded_limit,
+            },
+        )
     end_date = date.today() + timedelta(days=1)
     start_date = end_date - timedelta(days=bounded_days)
     statement = text(report["sql"])
@@ -204,3 +220,25 @@ async def run_retail_report(
         "total": total,
         "limits": {"days": bounded_days, "points": bounded_limit},
     }
+
+
+async def _connector_request(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    settings = get_settings()
+    if not settings.report_connector_url or not settings.report_connector_secret:
+        raise RuntimeError("Retail reporting connector is not fully configured")
+    try:
+        async with httpx.AsyncClient(timeout=settings.report_query_timeout_seconds + 3) as client:
+            response = await client.post(
+                f"{settings.report_connector_url.rstrip('/')}{path}",
+                headers={"X-Snapkey-Connector-Secret": settings.report_connector_secret},
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.TimeoutException as exc:
+        raise TimeoutError("Retail reporting connector timed out") from exc
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:300] or "Connector request failed"
+        raise RuntimeError(f"Retail reporting connector rejected the request: {detail}") from exc
+    except httpx.HTTPError as exc:
+        raise RuntimeError("Unable to reach the retail reporting connector") from exc

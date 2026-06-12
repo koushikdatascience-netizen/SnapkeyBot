@@ -54,3 +54,24 @@ def test_report_tenant_map_prevents_agent_selected_tenant(monkeypatch):
     monkeypatch.setattr(settings, "report_tenant_map_json", '{"owner@example.com":"shop-7"}')
 
     assert retail_reports.report_tenant_for("OWNER@example.com") == "shop-7"
+
+
+@pytest.mark.asyncio
+async def test_report_uses_local_connector_when_configured(monkeypatch):
+    settings = retail_reports.get_settings()
+    monkeypatch.setattr(settings, "report_connector_url", "https://reports.example.com")
+    monkeypatch.setattr(settings, "report_connector_secret", "secret")
+    captured = {}
+
+    async def fake_connector(path, payload):
+        captured.update({"path": path, "payload": payload})
+        return {"rows": [], "limits": {"days": 90, "points": 50}}
+
+    monkeypatch.setattr(retail_reports, "_connector_request", fake_connector)
+    await retail_reports.run_retail_report(
+        "top_products", tenant_id="shop-1", days=500, limit=500
+    )
+
+    assert captured["path"] == "/reports/run"
+    assert captured["payload"]["days"] == 90
+    assert captured["payload"]["limit"] == 50
