@@ -59,6 +59,65 @@ REPORTS = {
             LIMIT :limit
         """,
     },
+    "payment_mix": {
+        "title": "Sales by payment method",
+        "chart": "donut",
+        "sql": """
+            SELECT payment_method AS label, ROUND(SUM(amount), 2) AS value
+            FROM snapkey_payments
+            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
+            GROUP BY payment_method ORDER BY value DESC LIMIT :limit
+        """,
+    },
+    "hourly_sales": {
+        "title": "Sales by hour",
+        "chart": "bar",
+        "sql": """
+            SELECT CONCAT(LPAD(CAST(EXTRACT(HOUR FROM sold_at) AS VARCHAR), 2, '0'), ':00') AS label,
+                   ROUND(SUM(net_amount), 2) AS value
+            FROM snapkey_bills
+            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
+            GROUP BY EXTRACT(HOUR FROM sold_at) ORDER BY EXTRACT(HOUR FROM sold_at) LIMIT :limit
+        """,
+    },
+    "average_bill": {
+        "title": "Average bill value",
+        "chart": "line",
+        "sql": """
+            SELECT DATE(sold_at) AS label, ROUND(AVG(net_amount), 2) AS value
+            FROM snapkey_bills
+            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
+            GROUP BY DATE(sold_at) ORDER BY label LIMIT :limit
+        """,
+    },
+    "purchase_trend": {
+        "title": "Purchase trend",
+        "chart": "line",
+        "sql": """
+            SELECT DATE(purchased_at) AS label, ROUND(SUM(net_amount), 2) AS value
+            FROM snapkey_purchases
+            WHERE tenant_id = :tenant_id AND purchased_at >= :start_date AND purchased_at < :end_date
+            GROUP BY DATE(purchased_at) ORDER BY label LIMIT :limit
+        """,
+    },
+    "stock_by_category": {
+        "title": "Stock by category",
+        "chart": "bar",
+        "sql": """
+            SELECT category_name AS label, ROUND(SUM(stock_quantity), 2) AS value
+            FROM snapkey_inventory WHERE tenant_id = :tenant_id
+            GROUP BY category_name ORDER BY value DESC LIMIT :limit
+        """,
+    },
+    "customer_visits": {
+        "title": "Top customers by visits",
+        "chart": "bar",
+        "sql": """
+            SELECT customer_name AS label, ROUND(visit_count, 2) AS value
+            FROM snapkey_customers WHERE tenant_id = :tenant_id
+            ORDER BY visit_count DESC LIMIT :limit
+        """,
+    },
 }
 
 _engine: AsyncEngine | None = None
@@ -130,9 +189,12 @@ async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
                 text(
                     """
                     SELECT table_name
-                    FROM information_schema.views
-                    WHERE table_schema = DATABASE()
-                      AND table_name IN ('snapkey_sales', 'snapkey_inventory')
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name IN (
+                          'snapkey_sales', 'snapkey_inventory', 'snapkey_bills',
+                          'snapkey_payments', 'snapkey_purchases', 'snapkey_customers'
+                      )
                     """
                 )
             )
@@ -141,7 +203,13 @@ async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
                 "connected": True,
                 "tenant_assigned": bool(tenant_id),
                 "views": views,
-                "missing_views": sorted({"snapkey_sales", "snapkey_inventory"} - set(views)),
+                "missing_views": sorted(
+                    {
+                        "snapkey_sales", "snapkey_inventory", "snapkey_bills",
+                        "snapkey_payments", "snapkey_purchases", "snapkey_customers",
+                    }
+                    - set(views)
+                ),
                 "limits": {
                     "max_days": settings.report_max_days,
                     "max_points": settings.report_max_points,

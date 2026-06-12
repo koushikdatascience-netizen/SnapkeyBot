@@ -7,7 +7,10 @@ without exposing SQL Server port `1433`.
 Railway Snapkey -> HTTPS Cloudflare Tunnel -> localhost:8090 connector -> local SQL Server
 ```
 
-The connector accepts only four allowlisted, read-only reports. It never accepts raw SQL.
+The connector accepts only allowlisted, read-only reports. It never accepts raw SQL.
+
+Available visuals include sales trend, top products, category sales, low stock, payment mix, hourly sales,
+average bill value, purchase trend, stock by category, and top customers by visits.
 
 ## 1. Prepare SQL Server
 
@@ -17,17 +20,20 @@ Create a read-only login in SQL Server Management Studio:
 
 ```sql
 CREATE LOGIN snapkey_reports WITH PASSWORD = 'replace-with-a-long-password';
-USE Madhushala;
+USE barmanager;
 CREATE USER snapkey_reports FOR LOGIN snapkey_reports;
 ```
 
-Edit and run [create_reporting_views.sql](../connector/create_reporting_views.sql). Replace the placeholder source
-tables and columns with the real Madhushala schema.
+Run [create_reporting_views.sql](../connector/create_reporting_views.sql). It maps the real `barmanager` sales,
+item, category, and stock tables into two bounded reporting views and adds guarded reporting indexes.
 
 To inspect the real schema before editing the views:
 
 ```powershell
-$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost;DATABASE=Madhushala;Trusted_Connection=yes;Encrypt=yes;TrustServerCertificate=yes;"
+$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=.\SQLEXPRESS;DATABASE=master;Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes;"
+py -3.12 scripts/inspect_sqlserver_schema.py --list-databases
+
+$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=.\SQLEXPRESS;DATABASE=barmanager;Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes;"
 py -3.12 scripts/inspect_sqlserver_schema.py > sqlserver-schema.json
 ```
 
@@ -41,7 +47,7 @@ From the project folder on the SQL Server computer:
 ```powershell
 py -3.12 -m pip install -e ".[connector]"
 
-$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=localhost;DATABASE=Madhushala;UID=snapkey_reports;PWD=YOUR_PASSWORD;Encrypt=yes;TrustServerCertificate=yes;"
+$env:MSSQL_CONNECTION_STRING="DRIVER={ODBC Driver 18 for SQL Server};SERVER=.\SQLEXPRESS;DATABASE=barmanager;UID=snapkey_reports;PWD=YOUR_PASSWORD;Encrypt=no;TrustServerCertificate=yes;"
 $env:CONNECTOR_SECRET="generate-one-long-random-secret"
 
 powershell -ExecutionPolicy Bypass -File scripts/run_sqlserver_connector.ps1

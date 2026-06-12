@@ -8,5 +8,7 @@ pytest-cache-files-*/
 *.db
 *.db-*
 *.log
+*-schema.json
+sqlserver-schema.json
 uploads/
 node_modules/

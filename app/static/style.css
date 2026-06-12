@@ -149,6 +149,21 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .round-control { width: 68px; height: 68px; border: 1px solid #dedbea; border-radius: 50%; color: #171717; background: #ffffffd9; font-size: 10px; font-weight: 750; backdrop-filter: blur(16px); box-shadow: 0 10px 32px #392a6b18; }
 .round-control.end { background: #d94d5b; border-color: #d94d5b; }
 .live-note { color: #777; }
+.demo-director { position: fixed; z-index: 30; right: 18px; bottom: 18px; width: min(360px, calc(100vw - 36px)); padding: 14px; color: white; background: #111e; border: 1px solid #ffffff24; border-radius: 18px; box-shadow: 0 24px 80px #0008; backdrop-filter: blur(22px); }
+.demo-director header, .demo-director footer { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.demo-director header span { color: #f6c945; font-size: 9px; font-weight: 900; letter-spacing: .16em; }
+.demo-director p { margin: 8px 0 12px; color: #aaa; font-size: 9px; }
+.demo-director > div { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.demo-director button { padding: 9px; color: white; background: #ffffff12; border: 1px solid #ffffff18; border-radius: 9px; font-size: 9px; font-weight: 750; }
+.demo-director button:hover { background: #8268ff; }
+.demo-director footer { margin-top: 9px; }
+.demo-director footer button:first-child { flex: 1; color: #171717; background: #f6c945; }
+.live-thankyou { display: grid; place-items: center; min-height: 390px; padding: 30px; text-align: center; background: radial-gradient(circle at 50% 30%, #fff, #f4efff 48%, #fff5c8); border-radius: 22px; }
+.live-thankyou div { display: grid; place-items: center; width: 120px; height: 120px; border-radius: 42% 58% 63% 37%; color: white; background: conic-gradient(from 210deg, #f6c945, #ff7696, #8268ff, #4bc8ed, #5fd29a, #f6c945); box-shadow: 0 20px 70px #8268ff55; animation: morph 4s ease-in-out infinite alternate; }
+.live-thankyou div span { font-size: 52px; font-weight: 900; }
+.live-thankyou small { margin-top: 24px; color: #8268ff; font-weight: 900; letter-spacing: .22em; }
+.live-thankyou h3 { margin: 10px 0; font-size: clamp(34px, 5vw, 64px); letter-spacing: -.06em; }
+.live-thankyou p { color: #666; font-size: 14px; }
 .live-workspace { position: relative; z-index: 2; overflow: auto; width: 100%; max-height: calc(100vh - 190px); padding: 24px; color: #1d1d1f; background: #f8f8f8f2; border: 1px solid #ffffff30; border-radius: 28px; box-shadow: 0 30px 90px #0008; backdrop-filter: blur(24px); animation: stageIn .4s ease-out; scrollbar-width: thin; }
 .live-workspace-header { display: grid; grid-template-columns: 1fr auto; align-items: start; }
 .live-workspace-header small { color: #8268ff; font-size: 9px; font-weight: 850; letter-spacing: .16em; }
@@ -158,7 +173,7 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .live-workspace-header p { margin: 0 0 22px; color: #666; line-height: 1.5; }
 .live-calendar { display: grid; grid-template-columns: repeat(7, minmax(78px, 1fr)); gap: 7px; }
 .live-calendar article { display: grid; gap: 6px; min-height: 120px; padding: 12px 9px; background: white; border: 1px solid #ececec; border-radius: 14px; }
-.live-calendar article:nth-child(3) { border-color: #8268ff; box-shadow: 0 8px 24px #8268ff22; }
+.live-calendar article.today { border-color: #8268ff; box-shadow: 0 8px 24px #8268ff22; }
 .live-calendar small { color: #888; font-size: 9px; font-weight: 800; }
 .live-calendar strong { font-size: 22px; }
 .live-calendar span { align-self: end; color: #6c57d7; font-size: 9px; line-height: 1.35; }

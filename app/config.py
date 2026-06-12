@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     def normalize_report_database_url(cls, value: str) -> str:
         if value.startswith("mysql://"):
             return value.replace("mysql://", "mysql+asyncmy://", 1)
+        if value.startswith("postgres://"):
+            return value.replace("postgres://", "postgresql+asyncpg://", 1)
+        if value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
         return value
 
 

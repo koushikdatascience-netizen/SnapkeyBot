@@ -10,6 +10,67 @@ let lastYouTubeIntent = "";
 let lastReportIntent = "";
 let lastMonitoringIntent = "";
 let monitoringClock = null;
+let demoSequenceTimer = null;
+
+const demoScenes = {
+  intro: { title: "Good evening, Mr. Biswajit.", caption: "I am Snapkey, your live business assistant. Tell me, how may I assist you?", narration: "Good evening, Mr. Biswajit. I am Snapkey, your live business assistant. Tell me, how may I assist you?", workspace: { type: "brief", title: "Snapkey is ready", summary: "Voice-first intelligence for your business.", details: ["Live business insights", "Calendar and operations", "Camera monitoring", "Always ready to assist"] } },
+  sales: { title: "Yesterday's sales are ready.", caption: "Strong evening performance led overall revenue.", narration: "Here is yesterday's sales report. Total sales were one lakh eighty four thousand six hundred and twenty rupees. The strongest period was between six and nine P M.", workspace: { type: "report", title: "Yesterday's sales performance", summary: "M/S Mondal and Mondal FL ON Shop Off Counter", chart: "bar", total: 184620, rows: [{ label: "12 PM", value: 18400 }, { label: "2 PM", value: 22750 }, { label: "4 PM", value: 29120 }, { label: "6 PM", value: 38950 }, { label: "8 PM", value: 51700 }, { label: "10 PM", value: 23700 }] } },
+  calendar: { title: "Today's calendar is open.", caption: "Your evening meeting at Prayag is highlighted.", narration: "You have three scheduled items today. Your important evening meeting is at Prayag at six thirty P M. I have highlighted it on your calendar.", workspace: { type: "calendar", title: "Today's calendar", summary: "Three scheduled items. Evening meeting highlighted.", today_events: ["9:30 AM · Operations review", "1:00 PM · Supplier follow-up", "6:30 PM · Meeting at Prayag"] } },
+  camera1: { title: "Office camera one is live.", caption: "The retail floor is active and operating normally.", narration: "Opening office camera one. The retail floor is active, customer service is operating normally, and no attention items are detected.", workspace: { type: "monitoring", title: "Office camera 1 · Retail floor", summary: "Live operational view with activity detection.", selected_camera: 1, focus: "workers" } },
+  camera2: { title: "Office camera two is live.", caption: "Stock verification is in progress.", narration: "Opening office camera two. Stock verification is in progress, the assigned worker is active, and the workspace is operating normally.", workspace: { type: "monitoring", title: "Office camera 2 · Stock room", summary: "Live stock-room view with activity detection.", selected_camera: 2, focus: "workers" } },
+  thankyou: { title: "Thank you, Mr. Biswajit.", caption: "Snapkey is ready whenever your business needs it.", narration: "Thank you, Mr. Biswajit. Snapkey is ready whenever your business needs it.", workspace: { type: "thankyou", title: "Built for the way you lead.", summary: "One conversation. Every business view. Ready when you are." } },
+};
+
+function speakDemoNarration(text) {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  const voices = window.speechSynthesis.getVoices();
+  utterance.voice = voices.find(voice => /en-IN/i.test(voice.lang)) || voices.find(voice => /^en/i.test(voice.lang)) || null;
+  utterance.rate = 0.96;
+  utterance.pitch = 1.03;
+  utterance.onstart = () => setState("speaking", document.querySelector("#live-agent-title").textContent);
+  utterance.onend = () => setState("listening", "I’m listening.", "Ask me what you would like to see next.");
+  window.speechSynthesis.speak(utterance);
+}
+
+window.stopDemoNarration = function stopDemoNarration() {
+  window.speechSynthesis?.cancel();
+  if (demoSequenceTimer) window.clearTimeout(demoSequenceTimer);
+  demoSequenceTimer = null;
+};
+window.toggleDemoDirector = () => document.querySelector("#demo-director").classList.toggle("hidden");
+window.runDemoScene = function runDemoScene(name) {
+  const scene = demoScenes[name];
+  if (!scene) return;
+  setState("thinking", scene.title, scene.caption);
+  renderLiveWorkspace(scene.workspace);
+  window.setTimeout(() => speakDemoNarration(scene.narration), 250);
+};
+window.runDemoSequence = function runDemoSequence() {
+  window.stopDemoNarration();
+  const sequence = ["intro", "sales", "calendar", "camera1", "camera2", "thankyou"];
+  let index = 0;
+  const advance = () => {
+    window.runDemoScene(sequence[index++]);
+    if (index < sequence.length) demoSequenceTimer = window.setTimeout(advance, 10000);
+  };
+  advance();
+};
+window.addEventListener("keydown", event => {
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "d") {
+    event.preventDefault();
+    window.toggleDemoDirector();
+  }
+  if (event.altKey && event.key.toLowerCase() === "l") {
+    event.preventDefault();
+    window.openLiveAgent?.();
+  }
+  if (event.ctrlKey && event.altKey && /^[1-6]$/.test(event.key)) {
+    event.preventDefault();
+    window.runDemoScene(["intro", "sales", "calendar", "camera1", "camera2", "thankyou"][Number(event.key) - 1]);
+  }
+});
 
 function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
@@ -215,10 +276,16 @@ async function navigateActiveBrowser(url) {
 
 function retailReportIntent(text) {
   const value = text.toLowerCase();
-  if (!/\b(report|sales|stock|products|category|categories|inventory)\b/.test(value)) return null;
+  if (!/\b(report|sales|stock|products|category|categories|inventory|payment|cash|card|upi|hourly|rush|average bill|purchase|customer|visits)\b/.test(value)) return null;
   let reportName = "sales_summary";
   if (/\b(low stock|reorder|inventory)\b/.test(value)) reportName = "low_stock";
   else if (/\b(top|best|selling).*(product|item)|\bproduct.*(top|best|selling)\b/.test(value)) reportName = "top_products";
+  else if (/\b(payment|cash|card|upi)\b/.test(value)) reportName = "payment_mix";
+  else if (/\b(hourly|rush|busy hour|peak hour)\b/.test(value)) reportName = "hourly_sales";
+  else if (/\baverage bill|avg bill|bill value\b/.test(value)) reportName = "average_bill";
+  else if (/\bpurchase/.test(value)) reportName = "purchase_trend";
+  else if (/\b(customer|visits)\b/.test(value)) reportName = "customer_visits";
+  else if (/\bstock.*categor|categor.*stock\b/.test(value)) reportName = "stock_by_category";
   else if (/\bcategor/.test(value)) reportName = "category_sales";
   const days = /\btoday\b/.test(value) ? 1
     : /\byesterday\b/.test(value) ? 2
@@ -239,7 +306,7 @@ async function handleAutomaticRetailReport(text) {
     type: "progress",
     title: "Preparing live report",
     summary: "Querying a short, aggregated dataset so the result stays fast.",
-    steps: ["Applying date limits", "Aggregating in MySQL", "Rendering the chart"],
+    steps: ["Applying date limits", "Aggregating approved report data", "Rendering the chart"],
   });
   try {
     const result = await runIntegration({ tool_name: "retail_report", arguments: intent });
@@ -427,8 +494,18 @@ function renderLiveWorkspace(data) {
   else if (data.type === "browser") renderBrowser(workspace, data);
   else if (data.type === "report") renderReport(workspace, data);
   else if (data.type === "monitoring") renderMonitoring(workspace, data);
+  else if (data.type === "thankyou") renderThankYou(workspace, data);
   else if (["retail", "bar", "inventory"].includes(data.type)) renderRetail(workspace, data);
   else renderDetailList(workspace, parseDetails(data.details || data.items || data.steps));
+}
+
+function renderThankYou(workspace, data) {
+  const panel = document.createElement("div");
+  panel.className = "live-thankyou";
+  panel.innerHTML = "<div><span>S</span></div><small>SNAPKEY</small><h3></h3><p></p>";
+  panel.querySelector("h3").textContent = data.title || "Thank you.";
+  panel.querySelector("p").textContent = data.summary || "Ready whenever you are.";
+  workspace.append(panel);
 }
 
 const simulatedCameras = [
@@ -676,10 +753,18 @@ function renderCalendar(workspace, data) {
   const panel = document.createElement("div");
   panel.className = "live-calendar";
   const events = parseDetails(data.events || data.details);
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const monday = new Date();
+  monday.setDate(monday.getDate() - todayIndex);
   ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].forEach((day, index) => {
     const card = document.createElement("article");
-    card.innerHTML = `<small>${day}</small><strong>${index + 12}</strong><span></span>`;
-    card.querySelector("span").textContent = events[index] || (index === 2 ? "Available" : "No events");
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    if (index === todayIndex) card.classList.add("today");
+    card.innerHTML = `<small>${day}</small><strong>${date.getDate()}</strong><span></span>`;
+    card.querySelector("span").textContent = index === todayIndex && data.today_events
+      ? parseDetails(data.today_events).join(" · ")
+      : events[index] || "Available";
     panel.append(card);
   });
   workspace.append(panel);
@@ -752,6 +837,8 @@ function requestConfirmation(parameters = {}) {
 
 window.startLiveConversation = async function startLiveConversation() {
   if (conversation) return;
+  setConnected(true);
+  window.runDemoScene("intro");
   setState("connecting", "Joining the conversation…", "Please allow microphone access when your browser asks.");
   try {
     await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -796,8 +883,8 @@ window.startLiveConversation = async function startLiveConversation() {
     });
   } catch (error) {
     conversation = null;
-    setConnected(false);
-    setState("error", "Microphone connection failed.", error?.message || "Check browser microphone permission and try again.");
+    setConnected(true);
+    setState("listening", "Meeting showcase ready.", "The deterministic demo remains ready even without the live voice connection.");
   }
 };
 

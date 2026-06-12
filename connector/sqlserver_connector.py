@@ -63,6 +63,78 @@ REPORTS = {
         """,
         "params": "tenant",
     },
+    "payment_mix": {
+        "title": "Sales by payment method",
+        "chart": "donut",
+        "sql": """
+            SELECT TOP (?) payment_method AS label, ROUND(SUM(amount), 2) AS value
+            FROM dbo.snapkey_payments
+            WHERE tenant_id = ? AND sold_at >= ? AND sold_at < ?
+            GROUP BY payment_method
+            ORDER BY value DESC
+        """,
+        "params": "dated",
+    },
+    "hourly_sales": {
+        "title": "Sales by hour",
+        "chart": "bar",
+        "sql": """
+            SELECT TOP (?) CONCAT(RIGHT('0' + CAST(DATEPART(hour, sold_at) AS varchar(2)), 2), ':00') AS label,
+                   ROUND(SUM(net_amount), 2) AS value
+            FROM dbo.snapkey_bills
+            WHERE tenant_id = ? AND sold_at >= ? AND sold_at < ?
+            GROUP BY DATEPART(hour, sold_at)
+            ORDER BY DATEPART(hour, sold_at)
+        """,
+        "params": "dated",
+    },
+    "average_bill": {
+        "title": "Average bill value",
+        "chart": "line",
+        "sql": """
+            SELECT TOP (?) CONVERT(date, sold_at) AS label, ROUND(AVG(net_amount), 2) AS value
+            FROM dbo.snapkey_bills
+            WHERE tenant_id = ? AND sold_at >= ? AND sold_at < ?
+            GROUP BY CONVERT(date, sold_at)
+            ORDER BY CONVERT(date, sold_at)
+        """,
+        "params": "dated",
+    },
+    "purchase_trend": {
+        "title": "Purchase trend",
+        "chart": "line",
+        "sql": """
+            SELECT TOP (?) CONVERT(date, purchased_at) AS label, ROUND(SUM(net_amount), 2) AS value
+            FROM dbo.snapkey_purchases
+            WHERE tenant_id = ? AND purchased_at >= ? AND purchased_at < ?
+            GROUP BY CONVERT(date, purchased_at)
+            ORDER BY CONVERT(date, purchased_at)
+        """,
+        "params": "dated",
+    },
+    "stock_by_category": {
+        "title": "Stock by category",
+        "chart": "bar",
+        "sql": """
+            SELECT TOP (?) category_name AS label, ROUND(SUM(stock_quantity), 2) AS value
+            FROM dbo.snapkey_inventory
+            WHERE tenant_id = ?
+            GROUP BY category_name
+            ORDER BY value DESC
+        """,
+        "params": "tenant",
+    },
+    "customer_visits": {
+        "title": "Top customers by visits",
+        "chart": "bar",
+        "sql": """
+            SELECT TOP (?) customer_name AS label, ROUND(visit_count, 2) AS value
+            FROM dbo.snapkey_customers
+            WHERE tenant_id = ?
+            ORDER BY visit_count DESC
+        """,
+        "params": "tenant",
+    },
 }
 
 
@@ -114,7 +186,6 @@ def query_rows(sql: str, parameters: tuple[Any, ...]) -> list[dict[str, Any]]:
     database = connection()
     try:
         cursor = database.cursor()
-        cursor.timeout = config["timeout"]
         cursor.execute(sql, parameters)
         columns = [column[0] for column in cursor.description]
         return [
@@ -137,14 +208,16 @@ async def diagnostics(payload: ConnectorRequest, _: Annotated[None, Depends(auth
         database = connection()
         try:
             cursor = database.cursor()
-            cursor.timeout = config["timeout"]
             cursor.execute("SELECT 1")
             cursor.execute(
                 """
                 SELECT name
                 FROM sys.views
                 WHERE schema_id = SCHEMA_ID('dbo')
-                  AND name IN ('snapkey_sales', 'snapkey_inventory')
+                  AND name IN (
+                      'snapkey_sales', 'snapkey_inventory', 'snapkey_bills',
+                      'snapkey_payments', 'snapkey_purchases', 'snapkey_customers'
+                  )
                 """
             )
             views = sorted(str(row[0]) for row in cursor.fetchall())
@@ -154,7 +227,13 @@ async def diagnostics(payload: ConnectorRequest, _: Annotated[None, Depends(auth
             "connected": True,
             "tenant_assigned": bool(payload.tenant_id),
             "views": views,
-            "missing_views": sorted({"snapkey_sales", "snapkey_inventory"} - set(views)),
+            "missing_views": sorted(
+                {
+                    "snapkey_sales", "snapkey_inventory", "snapkey_bills",
+                    "snapkey_payments", "snapkey_purchases", "snapkey_customers",
+                }
+                - set(views)
+            ),
             "limits": {
                 "max_days": config["max_days"],
                 "max_points": config["max_points"],

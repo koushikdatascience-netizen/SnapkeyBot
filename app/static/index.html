@@ -90,6 +90,19 @@
       <button class="round-control hidden" id="live-mute" onclick="toggleLiveMute()">Mute</button>
       <button class="round-control end hidden" id="live-end" onclick="endLiveConversation()">End</button>
     </div>
+    <aside class="demo-director hidden" id="demo-director" aria-label="Meeting demo director">
+      <header><span>DEMO DIRECTOR</span><button type="button" onclick="toggleDemoDirector()">Hide</button></header>
+      <p>Private controls. Press Ctrl + Shift + D to show or hide.</p>
+      <div>
+        <button type="button" onclick="runDemoScene('intro')">1. Introduction</button>
+        <button type="button" onclick="runDemoScene('sales')">2. Yesterday sales</button>
+        <button type="button" onclick="runDemoScene('calendar')">3. Today's calendar</button>
+        <button type="button" onclick="runDemoScene('camera1')">4. Office camera 1</button>
+        <button type="button" onclick="runDemoScene('camera2')">5. Office camera 2</button>
+        <button type="button" onclick="runDemoScene('thankyou')">6. Thank you</button>
+      </div>
+      <footer><button type="button" onclick="runDemoSequence()">Auto sequence</button><button type="button" onclick="stopDemoNarration()">Stop narration</button></footer>
+    </aside>
     <p class="privacy-note live-note">Microphone audio is processed by ElevenLabs during the live session.</p>
   </section>
   <script src="/static/app.js"></script>

@@ -352,6 +352,7 @@ function openLiveAgent() {
   }
   document.querySelector("#live-agent").classList.remove("hidden");
 }
+window.openLiveAgent = openLiveAgent;
 
 async function closeLiveAgent() {
   await window.endLiveConversation?.();

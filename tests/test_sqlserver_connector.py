@@ -50,3 +50,14 @@ def test_connector_rejects_arbitrary_sql_report(monkeypatch):
     )
 
     assert response.status_code == 422
+
+
+def test_connector_exposes_interactive_visual_reports():
+    assert {
+        "payment_mix",
+        "hourly_sales",
+        "average_bill",
+        "purchase_trend",
+        "stock_by_category",
+        "customer_visits",
+    }.issubset(sqlserver_connector.REPORTS)
