@@ -2,6 +2,7 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["TASK_ALWAYS_EAGER"] = "true"
@@ -159,3 +160,30 @@ def test_remote_director_delivers_scene_to_presenter(client, monkeypatch):
                 "scene": "sales",
                 "presenters": 1,
             }
+
+
+def test_remote_director_rejects_invalid_secret(client, monkeypatch):
+    from app.api import operator
+
+    monkeypatch.setattr(operator.get_settings(), "demo_operator_secret", "meeting-secret")
+
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/api/operator/demo/demo-1?role=operator&key=wrong-secret"):
+            pass
+
+
+def test_remote_director_reports_when_no_presenter_is_online(client, monkeypatch):
+    from app.api import operator
+
+    monkeypatch.setattr(operator.get_settings(), "demo_operator_secret", "meeting-secret")
+
+    with client.websocket_connect(
+        "/api/operator/demo/empty-demo?role=operator&key=meeting-secret"
+    ) as director:
+        assert director.receive_json() == {"type": "status", "presenters": 0}
+        director.send_json({"type": "scene", "scene": "intro"})
+        assert director.receive_json() == {
+            "type": "delivered",
+            "scene": "intro",
+            "presenters": 0,
+        }
