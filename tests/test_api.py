@@ -52,6 +52,8 @@ def test_live_agent_bundle_includes_universal_workspace_tools(client):
     assert "SIMULATED DEMO" in response.text
     assert "Browser connection issue" in response.text
     assert "sendContextualUpdate" in response.text
+    assert "Live voice could not connect" in response.text
+    assert 'querySelector("#live-agent").classList.remove("hidden")' in response.text
 
 
 def test_tenant_cannot_read_another_tenants_task(client):

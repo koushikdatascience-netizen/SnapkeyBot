@@ -68,7 +68,10 @@ function connectRemoteDirector() {
   remoteDirectorSocket = new WebSocket(`${protocol}//${window.location.host}/api/operator/demo/${encodeURIComponent(sessionId)}?role=presenter`);
   remoteDirectorSocket.onmessage = event => {
     const message = JSON.parse(event.data);
-    if (message.type === "scene") window.runDemoScene(message.scene);
+    if (message.type === "scene") {
+      document.querySelector("#live-agent").classList.remove("hidden");
+      window.runDemoScene(message.scene);
+    }
   };
   remoteDirectorSocket.onclose = () => window.setTimeout(connectRemoteDirector, 1500);
 }
@@ -890,9 +893,11 @@ window.startLiveConversation = async function startLiveConversation() {
       },
     });
   } catch (error) {
+    console.error("Unable to start ElevenLabs live conversation", error);
     conversation = null;
-    setConnected(true);
-    setState("listening", "Meeting showcase ready.", "The deterministic demo remains ready even without the live voice connection.");
+    setConnected(false);
+    const detail = error?.message || "Check microphone permission and ElevenLabs configuration.";
+    setState("error", "Live voice could not connect.", `${detail} The visual demo remains available.`);
   }
 };
 
