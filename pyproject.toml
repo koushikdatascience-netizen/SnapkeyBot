@@ -26,6 +26,10 @@ agent = ["smolagents>=1.8,<2"]
 connector = ["pyodbc>=5.2,<6"]
 dev = ["pytest>=8.3,<9", "pytest-asyncio>=0.25,<1"]
 
+[tool.setuptools.packages.find]
+include = ["app*", "connector*"]
+exclude = ["node_modules*", "tests*", "scripts*", "docs*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
