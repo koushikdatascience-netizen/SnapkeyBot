@@ -152,7 +152,7 @@ arguments   Required string, LLM Prompt containing valid JSON
 confirmed   Required boolean, LLM Prompt
 ```
 
-Allowed `tool_name` values are `gmail_search`, `gmail_read`, `gmail_draft`, `gmail_send`, `calendar_events`, `calendar_create`, and `youtube_search`.
+Allowed `tool_name` values are `gmail_search`, `gmail_read`, `gmail_draft`, `gmail_send`, `calendar_events`, `calendar_create`, `youtube_search`, and `retail_report`.
 
 `start_browser` only needs an optional `title` string. `control_browser` uses `session_id`, `action`, `url`, `selector`, `text`, and `confirmed`. The agent must call `request_confirmation` before Gmail send, Calendar create, or interactive browser actions, then pass `confirmed=true` only when the user approved.
 
@@ -221,6 +221,7 @@ POST /api/integrations/execute/gmail_send
 POST /api/integrations/execute/calendar_events
 POST /api/integrations/execute/calendar_create
 POST /api/integrations/execute/youtube_search
+POST /api/integrations/execute/retail_report
 POST /api/integrations/browser/session
 POST /api/integrations/browser/{session_id}/action
 ```

@@ -30,6 +30,7 @@ from app.services.google_integration import (
     google_request,
     save_google_connection,
 )
+from app.services.retail_reports import report_catalog, report_tenant_for, reporting_ready, run_retail_report
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -80,6 +81,11 @@ async def google_status(
         "redirect_uri": google_redirect_uri() if get_settings().public_url else "",
         "youtube_configured": bool(get_settings().youtube_api_key),
     }
+
+
+@router.get("/reports/status")
+async def reports_status(user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
+    return {"configured": reporting_ready(), "reports": report_catalog()}
 
 
 @router.get("/google/connect")
@@ -231,6 +237,24 @@ async def _execute_integration(
                 for item in data.get("items", [])
             ]
         }
+    if tool_name == "retail_report":
+        if not reporting_ready():
+            raise HTTPException(status_code=503, detail="Retail reporting database is not configured")
+        try:
+            return await run_retail_report(
+                str(args.get("report_name", "sales_summary")),
+                tenant_id=report_tenant_for(user.email),
+                days=int(args.get("days", 7)),
+                limit=int(args.get("limit", 20)),
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except TimeoutError as exc:
+            raise HTTPException(status_code=504, detail=str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
     raise HTTPException(status_code=404, detail="Unknown integration tool")
 
 

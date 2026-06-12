@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     browserbase_api_key: str = ""
     browserbase_project_id: str = ""
     browserbase_region: str = "ap-southeast-1"
+    report_database_url: str = ""
+    report_tenant_id: str = ""
+    report_tenant_map_json: str = ""
+    report_max_days: int = 90
+    report_max_points: int = 50
+    report_query_timeout_seconds: int = 8
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

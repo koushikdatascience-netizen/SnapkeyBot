@@ -188,6 +188,13 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .live-media-panel .live-embed { position: relative; z-index: 2; display: block; border-radius: 0; }
 .live-media-state { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; padding: 24px; color: #695b91; text-align: center; font-size: 13px; font-weight: 750; }
 .live-media-link { display: inline-flex; margin-top: 12px; padding: 10px 14px; color: white; background: #171717; border-radius: 10px; text-decoration: none; font-size: 11px; font-weight: 800; }
+.live-report-chart { display: grid; gap: 8px; padding: 16px; background: white; border: 1px solid #e8e8e8; border-radius: 18px; }
+.live-report-item { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(120px, 3fr) auto; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; outline: none; transition: .2s ease; }
+.live-report-item:hover, .live-report-item:focus { background: #f6f3ff; transform: translateX(2px); }
+.live-report-item span { overflow: hidden; color: #555; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.live-report-item i { display: block; width: var(--value); height: 9px; border-radius: 99px; background: linear-gradient(90deg, #8268ff, #4bc8ed, #5fd29a); box-shadow: 0 3px 10px #8268ff22; transition: width .4s ease; }
+.live-report-item strong { min-width: 58px; color: #24202f; font-size: 11px; text-align: right; }
+.live-report-footer { margin-top: 10px; color: #777; font-size: 10px; font-weight: 700; text-align: right; }
 @keyframes morph { to { transform: rotate(120deg) scale(1.18); border-radius: 65% 35% 42% 58%; } }
 @keyframes float { 50% { transform: translateY(-7px) rotate(4deg); } }
 @keyframes blink { 0%, 60%, 100% { opacity: .2; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
@@ -232,4 +239,6 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
   .live-agent-controls { position: fixed; inset: auto 0 0; background: linear-gradient(transparent, #f8f8f8f2 35%); }
   .live-calendar { grid-template-columns: repeat(3, 1fr); }
   .live-embed, .browser-live-view { min-height: 62vh; }
+  .live-report-chart { padding: 10px; }
+  .live-report-item { grid-template-columns: minmax(74px, 1fr) minmax(70px, 1.5fr) auto; gap: 7px; padding: 6px 4px; }
 }

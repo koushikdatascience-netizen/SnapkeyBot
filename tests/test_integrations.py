@@ -117,3 +117,58 @@ def test_purpose_token_cannot_access_normal_api(authenticated_client):
     tool_token = create_purpose_token(user_id, "elevenlabs-tool")
     response = client.get("/api/tools", headers={"Authorization": f"Bearer {tool_token}"})
     assert response.status_code == 401
+
+
+def test_retail_report_calls_bounded_reporting_service(authenticated_client, monkeypatch):
+    from app.api import integrations
+
+    async def fake_report(report_name, *, tenant_id, days, limit):
+        assert report_name == "top_products"
+        assert tenant_id == "shop-1"
+        assert days == 30
+        assert limit == 20
+        return {
+            "report_name": report_name,
+            "title": "Top-selling products",
+            "chart": "bar",
+            "period": {"start": "2026-05-14", "end": "2026-06-12"},
+            "rows": [{"label": "Product A", "value": 42}],
+            "total": 42,
+            "limits": {"days": 30, "points": 20},
+        }
+
+    monkeypatch.setattr(integrations, "reporting_ready", lambda: True)
+    monkeypatch.setattr(integrations, "report_tenant_for", lambda _email: "shop-1")
+    monkeypatch.setattr(integrations, "run_retail_report", fake_report)
+    client, headers = authenticated_client
+    response = client.post(
+        "/api/integrations/execute/retail_report",
+        headers=headers,
+        json={
+            "arguments": {"report_name": "top_products", "days": 30, "limit": 20},
+            "confirmed": False,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["rows"][0]["value"] == 42
+
+
+def test_unknown_retail_report_is_rejected(authenticated_client, monkeypatch):
+    from app.api import integrations
+
+    async def fake_report(report_name, **_kwargs):
+        raise ValueError(f"Unknown retail report: {report_name}")
+
+    monkeypatch.setattr(integrations, "reporting_ready", lambda: True)
+    monkeypatch.setattr(integrations, "report_tenant_for", lambda _email: "shop-1")
+    monkeypatch.setattr(integrations, "run_retail_report", fake_report)
+    client, headers = authenticated_client
+    response = client.post(
+        "/api/integrations/execute/retail_report",
+        headers=headers,
+        json={"arguments": {"report_name": "arbitrary_sql"}, "confirmed": False},
+    )
+
+    assert response.status_code == 422
+    assert "Unknown retail report" in response.json()["detail"]

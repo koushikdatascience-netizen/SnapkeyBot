@@ -44,6 +44,8 @@ def test_live_agent_bundle_includes_universal_workspace_tools(client):
     assert "request_confirmation" in response.text
     assert "run_integration" in response.text
     assert "start_browser" in response.text
+    assert "retail_report" in response.text
+    assert "Preparing live report" in response.text
     assert "Browser connection issue" in response.text
     assert "sendContextualUpdate" in response.text
 

@@ -7,6 +7,7 @@ let activeBrowserSessionId = "";
 let browserStarting = false;
 let lastBrowserIntent = "";
 let lastYouTubeIntent = "";
+let lastReportIntent = "";
 
 function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
@@ -114,6 +115,15 @@ async function runIntegration(parameters = {}) {
       embed_url: video.embed_url,
       watch_url: `https://www.youtube.com/watch?v=${video.id}`,
     });
+  } else if (tool === "retail_report") {
+    renderLiveWorkspace({
+      type: "report",
+      title: result.title,
+      summary: `${result.period.start} to ${result.period.end}. Limited to ${result.limits.points} chart points.`,
+      chart: result.chart,
+      rows: result.rows,
+      total: result.total,
+    });
   } else if (tool === "calendar_events") {
     renderLiveWorkspace({
       type: "calendar",
@@ -197,6 +207,53 @@ async function navigateActiveBrowser(url) {
     selector: null,
     text: null,
   });
+}
+
+function retailReportIntent(text) {
+  const value = text.toLowerCase();
+  if (!/\b(report|sales|stock|products|category|categories|inventory)\b/.test(value)) return null;
+  let reportName = "sales_summary";
+  if (/\b(low stock|reorder|inventory)\b/.test(value)) reportName = "low_stock";
+  else if (/\b(top|best|selling).*(product|item)|\bproduct.*(top|best|selling)\b/.test(value)) reportName = "top_products";
+  else if (/\bcategor/.test(value)) reportName = "category_sales";
+  const days = /\btoday\b/.test(value) ? 1
+    : /\byesterday\b/.test(value) ? 2
+    : /\bweek\b/.test(value) ? 7
+    : /\bmonth\b/.test(value) ? 30
+    : /\bquarter\b/.test(value) ? 90
+    : 7;
+  return { report_name: reportName, days, limit: 20 };
+}
+
+async function handleAutomaticRetailReport(text) {
+  const intent = retailReportIntent(text);
+  if (!intent) return false;
+  const intentKey = JSON.stringify(intent);
+  if (intentKey === lastReportIntent) return false;
+  lastReportIntent = intentKey;
+  renderLiveWorkspace({
+    type: "progress",
+    title: "Preparing live report",
+    summary: "Querying a short, aggregated dataset so the result stays fast.",
+    steps: ["Applying date limits", "Aggregating in MySQL", "Rendering the chart"],
+  });
+  try {
+    const result = await runIntegration({ tool_name: "retail_report", arguments: intent });
+    updateAgentContext(
+      `Snapkey displayed the ${intent.report_name} report successfully using a bounded ${intent.days}-day query. ` +
+      "Summarize the visible report briefly."
+    );
+    return result;
+  } catch (error) {
+    renderLiveWorkspace({
+      type: "brief",
+      title: "Report connection issue",
+      summary: error?.message || "The report could not be loaded.",
+      details: "Check REPORT_DATABASE_URL and the read-only Snapkey reporting views.",
+    });
+    updateAgentContext(`The retail report failed because: ${error?.message || "report connection failed"}.`);
+    return false;
+  }
 }
 
 function browserIntentUrl(text) {
@@ -331,8 +388,43 @@ function renderLiveWorkspace(data) {
   else if (data.type === "email" || data.type === "gmail") renderLiveEmail(workspace, data);
   else if (data.type === "youtube") renderYouTube(workspace, data);
   else if (data.type === "browser") renderBrowser(workspace, data);
+  else if (data.type === "report") renderReport(workspace, data);
   else if (["retail", "bar", "inventory"].includes(data.type)) renderRetail(workspace, data);
   else renderDetailList(workspace, parseDetails(data.details || data.items || data.steps));
+}
+
+function renderReport(workspace, data) {
+  const rows = Array.isArray(data.rows) ? data.rows.slice(0, 50) : [];
+  if (!rows.length) return renderDetailList(workspace, ["No matching report data was found."]);
+  const panel = document.createElement("div");
+  panel.className = `live-report-chart ${data.chart === "line" ? "line" : "bar"}`;
+  const maximum = Math.max(...rows.map(row => Number(row.value) || 0), 1);
+  rows.forEach(row => {
+    const item = document.createElement("div");
+    item.className = "live-report-item";
+    item.tabIndex = 0;
+    item.title = `${row.label}: ${formatReportValue(row.value)}`;
+    const label = document.createElement("span");
+    label.textContent = row.label;
+    const bar = document.createElement("i");
+    bar.style.setProperty("--value", `${Math.max(3, (Number(row.value) || 0) / maximum * 100)}%`);
+    const value = document.createElement("strong");
+    value.textContent = formatReportValue(row.value);
+    item.append(label, bar, value);
+    panel.append(item);
+  });
+  workspace.append(panel);
+  const footer = document.createElement("div");
+  footer.className = "live-report-footer";
+  footer.textContent = `${rows.length} aggregated points shown · total ${formatReportValue(data.total)}`;
+  workspace.append(footer);
+}
+
+function formatReportValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(number)
+    : String(value ?? "");
 }
 
 function renderYouTube(workspace, data) {
@@ -508,6 +600,7 @@ window.startLiveConversation = async function startLiveConversation() {
         const text = message.message || message.text;
         if (text) document.querySelector("#live-caption").textContent = text;
         if (text && message.source === "user") {
+          handleAutomaticRetailReport(text);
           handleAutomaticYouTubeIntent(text);
           handleAutomaticBrowserIntent(text);
         }
