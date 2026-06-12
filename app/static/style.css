@@ -314,3 +314,25 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
   .camera-scene { min-height: 210px; }
   .worker-status-list { grid-template-columns: 1fr; }
 }
+
+.director-page { min-height: 100vh; padding: 34px; color: #19171f; background: radial-gradient(circle at 15% 10%, #8268ff2b, transparent 30%), radial-gradient(circle at 90% 90%, #f6c94542, transparent 30%), #f7f6fa; }
+.director-console { width: min(920px, 100%); margin: auto; }
+.director-console > header { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 24px; }
+.director-console h1 { margin: 4px 0 0; font-size: clamp(38px, 7vw, 70px); letter-spacing: -.065em; }
+.director-status { padding: 9px 13px; border-radius: 99px; font-size: 11px; font-weight: 850; }
+.director-status.online { color: #07552d; background: #c9f6dd; }.director-status.offline { color: #765800; background: #fff0af; }
+.director-setup { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; padding: 15px; background: #ffffffc9; border: 1px solid #e7e3ef; border-radius: 18px; box-shadow: 0 15px 60px #44336612; }
+.director-setup label { display: grid; gap: 5px; color: #777; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.director-setup input { min-width: 0; padding: 11px; border: 1px solid #ddd8e7; border-radius: 9px; }
+.director-setup button, .director-scenes button { border: 0; cursor: pointer; }
+.director-setup button { align-self: end; padding: 12px 20px; color: white; background: #17151c; border-radius: 10px; font-weight: 800; }
+.director-console > p { min-height: 20px; margin: 15px 4px; color: #68616f; font-size: 12px; }
+.director-scenes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.director-scenes button { display: flex; align-items: center; gap: 15px; padding: 18px; color: #26222c; background: white; border: 1px solid #e9e5ef; border-radius: 17px; text-align: left; box-shadow: 0 9px 28px #4433660b; transition: .2s ease; }
+.director-scenes button:hover { border-color: #8268ff; transform: translateY(-2px); box-shadow: 0 12px 32px #8268ff1e; }
+.director-scenes b { display: grid; place-items: center; flex: 0 0 42px; height: 42px; color: white; background: linear-gradient(135deg, #8268ff, #5341b0); border-radius: 12px; }
+.director-scenes span { display: grid; gap: 4px; font-weight: 850; }.director-scenes small { color: #777; font-size: 10px; font-weight: 600; }
+.director-console footer { margin-top: 20px; padding: 12px; color: #777; font-size: 10px; text-align: center; }.director-console code { color: #5541b5; }
+@media (max-width: 620px) {
+  .director-page { padding: 18px 12px; }.director-console > header { align-items: flex-start; }.director-setup, .director-scenes { grid-template-columns: 1fr; }
+}

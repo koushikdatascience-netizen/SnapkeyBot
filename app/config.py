@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     report_query_timeout_seconds: int = 8
     monitoring_camera_urls: str = ""
     monitoring_screen_url: str = ""
+    demo_operator_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

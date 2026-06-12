@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snapkey Demo Director</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="director-page">
+  <main class="director-console">
+    <header>
+      <div><p class="kicker">PRIVATE CONTROL ROOM</p><h1>Demo Director</h1></div>
+      <span id="director-status" class="director-status offline">Connecting</span>
+    </header>
+    <section class="director-setup">
+      <label>Session code<input id="director-session" value="meeting1"></label>
+      <label>Operator secret<input id="director-key" type="password" placeholder="Railway DEMO_OPERATOR_SECRET"></label>
+      <button onclick="connectDirector()">Connect</button>
+    </section>
+    <p id="director-message">Open the presenter link on the owner's computer, then connect here.</p>
+    <section class="director-scenes">
+      <button onclick="sendScene('intro')"><b>01</b><span>Introduction<small>Hindi greeting and Snapkey introduction</small></span></button>
+      <button onclick="sendScene('sales')"><b>02</b><span>Yesterday's sales<small>Interactive sales performance chart</small></span></button>
+      <button onclick="sendScene('calendar')"><b>03</b><span>Today's calendar<small>Highlights the Prayag meeting</small></span></button>
+      <button onclick="sendScene('camera1')"><b>04</b><span>Office camera 1<small>Retail floor live view</small></span></button>
+      <button onclick="sendScene('camera2')"><b>05</b><span>Office camera 2<small>Stock room live view</small></span></button>
+      <button onclick="sendScene('thankyou')"><b>06</b><span>Thank you<small>Close the presentation elegantly</small></span></button>
+    </section>
+    <footer>Presenter link: <code id="presenter-link"></code></footer>
+  </main>
+  <script src="/static/director.js"></script>
+</body>
+</html>

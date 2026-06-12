@@ -65,3 +65,8 @@ async def app_config() -> AppConfigResponse:
 @app.get("/", include_in_schema=False)
 async def index() -> FileResponse:
     return FileResponse(static_dir / "index.html")
+
+
+@app.get("/director", include_in_schema=False)
+async def director() -> FileResponse:
+    return FileResponse(static_dir / "director.html")

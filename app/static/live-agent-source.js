@@ -11,6 +11,7 @@ let lastReportIntent = "";
 let lastMonitoringIntent = "";
 let monitoringClock = null;
 let demoSequenceTimer = null;
+let remoteDirectorSocket = null;
 
 const demoScenes = {
   intro: { title: "Good evening, Mr. Biswajit.", caption: "I am Snapkey, your live business assistant. Tell me, how may I assist you?", agentPrompt: "Hindi mein warmly greet Mr. Biswajit, introduce yourself as Snapkey, and ask how you may assist him. Keep it under two sentences.", workspace: { type: "brief", title: "Snapkey is ready", summary: "Voice-first intelligence for your business.", details: ["Live business insights", "Calendar and operations", "Camera monitoring", "Always ready to assist"] } },
@@ -59,6 +60,20 @@ window.addEventListener("keydown", event => {
     window.runDemoScene(["intro", "sales", "calendar", "camera1", "camera2", "thankyou"][Number(event.key) - 1]);
   }
 });
+
+function connectRemoteDirector() {
+  const sessionId = new URLSearchParams(window.location.search).get("demo_session");
+  if (!sessionId) return;
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  remoteDirectorSocket = new WebSocket(`${protocol}//${window.location.host}/api/operator/demo/${encodeURIComponent(sessionId)}?role=presenter`);
+  remoteDirectorSocket.onmessage = event => {
+    const message = JSON.parse(event.data);
+    if (message.type === "scene") window.runDemoScene(message.scene);
+  };
+  remoteDirectorSocket.onclose = () => window.setTimeout(connectRemoteDirector, 1500);
+}
+
+connectRemoteDirector();
 
 function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);

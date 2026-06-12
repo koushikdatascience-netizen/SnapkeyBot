@@ -35,6 +35,7 @@ def test_health_and_ui_are_served(client):
     response = client.get("/")
     assert response.status_code == 200
     assert "What can we move" in response.text
+    assert client.get("/director").status_code == 200
 
 
 def test_live_agent_bundle_includes_universal_workspace_tools(client):
@@ -139,3 +140,22 @@ def test_config_exposes_monitoring_video_urls(client, monkeypatch):
         "https://cdn.example/c2.mp4",
     ]
     assert response.json()["monitoring_screen_url"].endswith("screen.mp4")
+
+
+def test_remote_director_delivers_scene_to_presenter(client, monkeypatch):
+    from app.api import operator
+
+    monkeypatch.setattr(operator.get_settings(), "demo_operator_secret", "meeting-secret")
+
+    with client.websocket_connect("/api/operator/demo/demo-1?role=presenter") as presenter:
+        with client.websocket_connect(
+            "/api/operator/demo/demo-1?role=operator&key=meeting-secret"
+        ) as director:
+            assert director.receive_json() == {"type": "status", "presenters": 1}
+            director.send_json({"type": "scene", "scene": "sales"})
+            assert presenter.receive_json() == {"type": "scene", "scene": "sales"}
+            assert director.receive_json() == {
+                "type": "delivered",
+                "scene": "sales",
+                "presenters": 1,
+            }
