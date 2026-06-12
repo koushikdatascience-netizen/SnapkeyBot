@@ -1,14 +1,14 @@
 # One-Minute Meeting Demo
 
-The meeting showcase is deterministic and continues even if ElevenLabs, Telegram, Google, reporting, or the
-internet is unavailable. Fixed narration uses the browser's local speech engine.
+The meeting visuals are deterministic while the connected ElevenLabs live agent remains the interactive voice.
+Director scene controls prompt that same interruptible live agent to explain each visible workspace in Hindi.
 
 ## Before The Meeting
 
 1. Open Snapkey and sign in.
 2. Click **Talk live**.
 3. Press `Ctrl + Shift + D` to briefly confirm the private Demo Director panel exists, then hide it.
-4. Confirm browser sound is enabled.
+4. Confirm the ElevenLabs agent uses a Hindi-capable Indian voice and browser sound is enabled.
 5. Configure `MONITORING_CAMERA_URLS` if real prerecorded camera videos should replace the animated fallbacks.
 
 ## Recommended Showcase
@@ -37,5 +37,5 @@ Press `Ctrl + Shift + D` to show or hide the director panel. Its **Auto sequence
 5. "Now show camera two."
 6. "Thank you."
 
-Trigger the matching scene immediately after each prompt. The live agent can remain connected for natural
-conversation, but the important visuals and narration do not depend on its response.
+Trigger the matching scene immediately after each prompt. The visual opens deterministically and the connected
+live agent receives a concise Hindi instruction to explain it naturally.

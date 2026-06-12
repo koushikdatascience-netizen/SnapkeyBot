@@ -26,6 +26,8 @@ async def conversation_token(
     return LiveConversationTokenResponse(
         token=token,
         tool_token=create_purpose_token(user.id, "elevenlabs-tool", minutes=30),
+        voice_id=get_settings().elevenlabs_voice_id,
+        language=get_settings().elevenlabs_language_code or "hi",
     )
 
 

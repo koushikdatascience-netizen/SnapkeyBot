@@ -46,6 +46,8 @@ class AppConfigResponse(BaseModel):
 class LiveConversationTokenResponse(BaseModel):
     token: str
     tool_token: str
+    voice_id: str = ""
+    language: str = "hi"
 
 
 class IntegrationExecuteRequest(BaseModel):

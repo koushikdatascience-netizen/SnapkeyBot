@@ -13,29 +13,15 @@ let monitoringClock = null;
 let demoSequenceTimer = null;
 
 const demoScenes = {
-  intro: { title: "Good evening, Mr. Biswajit.", caption: "I am Snapkey, your live business assistant. Tell me, how may I assist you?", narration: "Good evening, Mr. Biswajit. I am Snapkey, your live business assistant. Tell me, how may I assist you?", workspace: { type: "brief", title: "Snapkey is ready", summary: "Voice-first intelligence for your business.", details: ["Live business insights", "Calendar and operations", "Camera monitoring", "Always ready to assist"] } },
-  sales: { title: "Yesterday's sales are ready.", caption: "Strong evening performance led overall revenue.", narration: "Here is yesterday's sales report. Total sales were one lakh eighty four thousand six hundred and twenty rupees. The strongest period was between six and nine P M.", workspace: { type: "report", title: "Yesterday's sales performance", summary: "M/S Mondal and Mondal FL ON Shop Off Counter", chart: "bar", total: 184620, rows: [{ label: "12 PM", value: 18400 }, { label: "2 PM", value: 22750 }, { label: "4 PM", value: 29120 }, { label: "6 PM", value: 38950 }, { label: "8 PM", value: 51700 }, { label: "10 PM", value: 23700 }] } },
-  calendar: { title: "Today's calendar is open.", caption: "Your evening meeting at Prayag is highlighted.", narration: "You have three scheduled items today. Your important evening meeting is at Prayag at six thirty P M. I have highlighted it on your calendar.", workspace: { type: "calendar", title: "Today's calendar", summary: "Three scheduled items. Evening meeting highlighted.", today_events: ["9:30 AM · Operations review", "1:00 PM · Supplier follow-up", "6:30 PM · Meeting at Prayag"] } },
-  camera1: { title: "Office camera one is live.", caption: "The retail floor is active and operating normally.", narration: "Opening office camera one. The retail floor is active, customer service is operating normally, and no attention items are detected.", workspace: { type: "monitoring", title: "Office camera 1 · Retail floor", summary: "Live operational view with activity detection.", selected_camera: 1, focus: "workers" } },
-  camera2: { title: "Office camera two is live.", caption: "Stock verification is in progress.", narration: "Opening office camera two. Stock verification is in progress, the assigned worker is active, and the workspace is operating normally.", workspace: { type: "monitoring", title: "Office camera 2 · Stock room", summary: "Live stock-room view with activity detection.", selected_camera: 2, focus: "workers" } },
-  thankyou: { title: "Thank you, Mr. Biswajit.", caption: "Snapkey is ready whenever your business needs it.", narration: "Thank you, Mr. Biswajit. Snapkey is ready whenever your business needs it.", workspace: { type: "thankyou", title: "Built for the way you lead.", summary: "One conversation. Every business view. Ready when you are." } },
+  intro: { title: "Good evening, Mr. Biswajit.", caption: "I am Snapkey, your live business assistant. Tell me, how may I assist you?", agentPrompt: "Hindi mein warmly greet Mr. Biswajit, introduce yourself as Snapkey, and ask how you may assist him. Keep it under two sentences.", workspace: { type: "brief", title: "Snapkey is ready", summary: "Voice-first intelligence for your business.", details: ["Live business insights", "Calendar and operations", "Camera monitoring", "Always ready to assist"] } },
+  sales: { title: "Yesterday's sales are ready.", caption: "Strong evening performance led overall revenue.", agentPrompt: "Hindi mein visible sales report explain karo. Total sales 1,84,620 rupees hain aur strongest period 6 se 9 PM tha. Concise raho.", workspace: { type: "report", title: "Yesterday's sales performance", summary: "M/S Mondal and Mondal FL ON Shop Off Counter", chart: "bar", total: 184620, rows: [{ label: "12 PM", value: 18400 }, { label: "2 PM", value: 22750 }, { label: "4 PM", value: 29120 }, { label: "6 PM", value: 38950 }, { label: "8 PM", value: 51700 }, { label: "10 PM", value: 23700 }] } },
+  calendar: { title: "Today's calendar is open.", caption: "Your evening meeting at Prayag is highlighted.", agentPrompt: "Hindi mein today's visible calendar summarize karo. Important meeting Prayag mein 6:30 PM par hai. Concise raho.", workspace: { type: "calendar", title: "Today's calendar", summary: "Three scheduled items. Evening meeting highlighted.", today_events: ["9:30 AM · Operations review", "1:00 PM · Supplier follow-up", "6:30 PM · Meeting at Prayag"] } },
+  camera1: { title: "Office camera one is live.", caption: "The retail floor is active and operating normally.", agentPrompt: "Hindi mein bolo ki office camera one open hai, retail floor active hai, customer service normal hai, aur koi attention item detect nahi hua.", workspace: { type: "monitoring", title: "Office camera 1 · Retail floor", summary: "Live operational view with activity detection.", selected_camera: 1, focus: "workers" } },
+  camera2: { title: "Office camera two is live.", caption: "Stock verification is in progress.", agentPrompt: "Hindi mein bolo ki office camera two open hai, stock verification chal raha hai, assigned worker active hai, aur workspace normal hai.", workspace: { type: "monitoring", title: "Office camera 2 · Stock room", summary: "Live stock-room view with activity detection.", selected_camera: 2, focus: "workers" } },
+  thankyou: { title: "Thank you, Mr. Biswajit.", caption: "Snapkey is ready whenever your business needs it.", agentPrompt: "Hindi mein Mr. Biswajit ko thank you bolo aur kaho ki Snapkey unke business ke liye hamesha ready hai. One sentence.", workspace: { type: "thankyou", title: "Built for the way you lead.", summary: "One conversation. Every business view. Ready when you are." } },
 };
 
-function speakDemoNarration(text) {
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  const voices = window.speechSynthesis.getVoices();
-  utterance.voice = voices.find(voice => /en-IN/i.test(voice.lang)) || voices.find(voice => /^en/i.test(voice.lang)) || null;
-  utterance.rate = 0.96;
-  utterance.pitch = 1.03;
-  utterance.onstart = () => setState("speaking", document.querySelector("#live-agent-title").textContent);
-  utterance.onend = () => setState("listening", "I’m listening.", "Ask me what you would like to see next.");
-  window.speechSynthesis.speak(utterance);
-}
-
 window.stopDemoNarration = function stopDemoNarration() {
-  window.speechSynthesis?.cancel();
   if (demoSequenceTimer) window.clearTimeout(demoSequenceTimer);
   demoSequenceTimer = null;
 };
@@ -45,7 +31,9 @@ window.runDemoScene = function runDemoScene(name) {
   if (!scene) return;
   setState("thinking", scene.title, scene.caption);
   renderLiveWorkspace(scene.workspace);
-  window.setTimeout(() => speakDemoNarration(scene.narration), 250);
+  if (conversation?.isOpen()) {
+    conversation.sendUserMessage(scene.agentPrompt);
+  }
 };
 window.runDemoSequence = function runDemoSequence() {
   window.stopDemoNarration();
@@ -848,9 +836,14 @@ window.startLiveConversation = async function startLiveConversation() {
       conversationToken: response.token,
       connectionType: "webrtc",
       dynamicVariables: { snapkey_tool_token: response.tool_token },
+      overrides: {
+        agent: { language: response.language || "hi" },
+        tts: response.voice_id ? { voiceId: response.voice_id } : undefined,
+      },
       clientTools,
       onConnect: () => {
         setConnected(true);
+        window.setTimeout(() => window.runDemoScene("intro"), 500);
         setState("listening", "I’m listening.", "Speak naturally. You can interrupt me at any time.");
       },
       onDisconnect: () => {
