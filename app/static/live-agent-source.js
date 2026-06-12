@@ -8,6 +8,8 @@ let browserStarting = false;
 let lastBrowserIntent = "";
 let lastYouTubeIntent = "";
 let lastReportIntent = "";
+let lastMonitoringIntent = "";
+let monitoringClock = null;
 
 function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
@@ -50,6 +52,7 @@ window.toggleLiveWorkspace = function toggleLiveWorkspace() {
 };
 
 window.closeLiveWorkspace = function closeLiveWorkspace() {
+  stopMonitoringClock();
   setWorkspaceVisible(false);
 };
 
@@ -70,6 +73,7 @@ const clientTools = {
   show_video_workspace: parameters => showWorkspace({ type: "video", ...parameters }),
   show_progress_workspace: parameters => showWorkspace({ type: "progress", ...parameters }),
   show_brief_workspace: parameters => showWorkspace({ type: "brief", ...parameters }),
+  show_monitoring_workspace: parameters => showWorkspace({ type: "monitoring", ...parameters }),
   request_human_operator: parameters => {
     window.SnapkeyUI.prefillPrompt(parameters.request || "Please connect me with a human operator.");
     return "The request is prepared in the text workspace for the user to send.";
@@ -256,6 +260,38 @@ async function handleAutomaticRetailReport(text) {
   }
 }
 
+function monitoringIntent(text) {
+  const value = text.toLowerCase();
+  if (!/\b(cam|camera|cctv|worker|staff|employee|screen share|monitor|monitoring|sleeping|idle)\b/.test(value)) {
+    return null;
+  }
+  const cameraMatch = value.match(/\b(?:cam|camera)\s*(?:number\s*)?([123])\b/);
+  return {
+    camera: cameraMatch ? Number(cameraMatch[1]) : 0,
+    focus: /\b(worker|staff|employee|sleeping|idle)\b/.test(value) ? "workers" : "cameras",
+  };
+}
+
+function handleAutomaticMonitoringIntent(text) {
+  const intent = monitoringIntent(text);
+  if (!intent) return false;
+  const intentKey = JSON.stringify(intent);
+  if (intentKey === lastMonitoringIntent) return false;
+  lastMonitoringIntent = intentKey;
+  renderLiveWorkspace({
+    type: "monitoring",
+    title: intent.camera ? `Camera ${intent.camera} live view` : "Operations monitoring",
+    summary: "Simulated camera analytics and worker activity for demonstration only.",
+    selected_camera: intent.camera,
+    focus: intent.focus,
+  });
+  updateAgentContext(
+    `Snapkey opened the simulated monitoring demo${intent.camera ? ` on camera ${intent.camera}` : ""}. ` +
+    "Clearly describe it as simulated demo data, then summarize the visible worker statuses."
+  );
+  return true;
+}
+
 function browserIntentUrl(text) {
   const value = text.toLowerCase().trim();
   if (!/(open|browse|visit|search|google|youtube|website|web)/.test(value)) return "";
@@ -320,7 +356,7 @@ async function handleAutomaticYouTubeIntent(text) {
 }
 
 async function handleAutomaticBrowserIntent(text) {
-  if (youtubeIntentQuery(text)) return;
+  if (youtubeIntentQuery(text) || monitoringIntent(text)) return;
   const url = browserIntentUrl(text);
   const intentKey = `${text}|${url}`;
   if (!url || intentKey === lastBrowserIntent || browserStarting) return;
@@ -364,6 +400,7 @@ function parseDetails(value) {
 }
 
 function renderLiveWorkspace(data) {
+  stopMonitoringClock();
   const workspace = document.querySelector("#live-workspace");
   workspace.className = `live-workspace ${data.type || "brief"}`;
   workspace.replaceChildren();
@@ -389,8 +426,108 @@ function renderLiveWorkspace(data) {
   else if (data.type === "youtube") renderYouTube(workspace, data);
   else if (data.type === "browser") renderBrowser(workspace, data);
   else if (data.type === "report") renderReport(workspace, data);
+  else if (data.type === "monitoring") renderMonitoring(workspace, data);
   else if (["retail", "bar", "inventory"].includes(data.type)) renderRetail(workspace, data);
   else renderDetailList(workspace, parseDetails(data.details || data.items || data.steps));
+}
+
+const simulatedCameras = [
+  { id: 1, name: "Retail floor", person: "Anita S.", activity: "Serving customer", status: "active", zone: "Counter A" },
+  { id: 2, name: "Stock room", person: "Rahul K.", activity: "Stock counting", status: "active", zone: "Rack 4" },
+  { id: 3, name: "Back office", person: "Vikram P.", activity: "Idle", status: "idle", zone: "Desk 2" },
+];
+
+function renderMonitoring(workspace, data) {
+  const notice = document.createElement("div");
+  notice.className = "monitoring-demo-notice";
+  notice.textContent = "SIMULATED DEMO · No real cameras or employee analytics are connected";
+  workspace.append(notice);
+
+  const metrics = document.createElement("div");
+  metrics.className = "monitoring-metrics";
+  [
+    ["People detected", "5"],
+    ["Active", "4"],
+    ["Idle review", "1"],
+    ["Cameras online", "3 / 3"],
+  ].forEach(([label, value]) => {
+    const item = document.createElement("span");
+    item.innerHTML = "<small></small><strong></strong>";
+    item.querySelector("small").textContent = label;
+    item.querySelector("strong").textContent = value;
+    metrics.append(item);
+  });
+  workspace.append(metrics);
+
+  const grid = document.createElement("div");
+  grid.className = `monitoring-grid${data.selected_camera ? " focused" : ""}`;
+  simulatedCameras.forEach((camera, index) => {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = `camera-tile camera-${camera.id} ${camera.status}`;
+    if (data.selected_camera && data.selected_camera !== camera.id) tile.classList.add("camera-hidden");
+    tile.onclick = () => renderLiveWorkspace({ ...data, selected_camera: data.selected_camera === camera.id ? 0 : camera.id });
+    tile.innerHTML = `
+      <div class="camera-scene">
+        <span class="camera-grid-lines"></span>
+        <span class="camera-person person-${index + 1}"></span>
+        <span class="detection-box"><b></b></span>
+        <span class="camera-live-dot"></span>
+        <time data-monitor-clock></time>
+      </div>
+      <div class="camera-meta">
+        <span><small></small><strong></strong></span>
+        <span><small></small><strong></strong></span>
+      </div>`;
+    tile.querySelector(".camera-meta span:first-child small").textContent = `CAM ${camera.id} · ${camera.name}`;
+    tile.querySelector(".camera-meta span:first-child strong").textContent = camera.person;
+    tile.querySelector(".camera-meta span:last-child small").textContent = camera.zone;
+    tile.querySelector(".camera-meta span:last-child strong").textContent = camera.activity;
+    tile.querySelector(".detection-box b").textContent = `${camera.person} · ${camera.status === "idle" ? "IDLE" : "WORKING"} · ${96 - index * 3}%`;
+    grid.append(tile);
+  });
+  workspace.append(grid);
+
+  const workers = document.createElement("div");
+  workers.className = "worker-status-list";
+  [
+    ["Anita S.", "Serving customers", "Active now", "active"],
+    ["Rahul K.", "Stock verification", "Active now", "active"],
+    ["Priya M.", "Billing terminal", "Screen shared", "shared"],
+    ["Vikram P.", "No activity detected", "Idle for 08:14", "idle"],
+  ].forEach(([name, task, timing, status]) => {
+    const row = document.createElement("article");
+    row.className = status;
+    row.innerHTML = "<i></i><span><strong></strong><small></small></span><b></b>";
+    row.querySelector("strong").textContent = name;
+    row.querySelector("small").textContent = task;
+    row.querySelector("b").textContent = timing;
+    workers.append(row);
+  });
+  workspace.append(workers);
+
+  const screen = document.createElement("div");
+  screen.className = "simulated-screen-share";
+  screen.innerHTML = `
+    <div><span></span><small>PRIYA M. · POS SCREEN SHARE · SIMULATED</small></div>
+    <section><aside></aside><main><span></span><span></span><span></span><span></span></main></section>`;
+  workspace.append(screen);
+  updateMonitoringClocks();
+  monitoringClock = window.setInterval(updateMonitoringClocks, 1000);
+}
+
+function updateMonitoringClocks() {
+  const time = new Intl.DateTimeFormat("en-IN", {
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).format(new Date());
+  document.querySelectorAll("[data-monitor-clock]").forEach(clock => {
+    clock.textContent = time;
+  });
+}
+
+function stopMonitoringClock() {
+  if (monitoringClock) window.clearInterval(monitoringClock);
+  monitoringClock = null;
 }
 
 function renderReport(workspace, data) {
@@ -494,6 +631,7 @@ function liveWorkspaceTitle(type) {
     retail: "Madhushala operations",
     bar: "Madhushala operations",
     inventory: "Inventory overview",
+    monitoring: "Operations monitoring",
   }[type] || "Live workspace";
 }
 
@@ -600,6 +738,7 @@ window.startLiveConversation = async function startLiveConversation() {
         const text = message.message || message.text;
         if (text) document.querySelector("#live-caption").textContent = text;
         if (text && message.source === "user") {
+          handleAutomaticMonitoringIntent(text);
           handleAutomaticRetailReport(text);
           handleAutomaticYouTubeIntent(text);
           handleAutomaticBrowserIntent(text);

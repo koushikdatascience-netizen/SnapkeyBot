@@ -131,6 +131,7 @@ show_product_workspace
 show_video_workspace
 show_progress_workspace
 show_brief_workspace
+show_monitoring_workspace
 request_human_operator
 ```
 
@@ -169,7 +170,10 @@ summary  Optional string, LLM Prompt
 details  Optional string, LLM Prompt
 ```
 
-Use `type` values such as `calendar`, `gmail`, `retail`, `inventory`, `video`, or `brief`. Put events, email details, retail metrics, or other display data in `details`, separated with semicolons.
+Use `type` values such as `calendar`, `gmail`, `retail`, `inventory`, `monitoring`, `video`, or `brief`. Put events, email details, retail metrics, or other display data in `details`, separated with semicolons.
+
+The `monitoring` workspace is an explicitly labeled simulated demonstration. Voice requests such as `show camera 1`,
+`open CCTV`, or `show all workers` display dummy camera analytics and must never be described as real surveillance.
 
 `request_confirmation` parameters:
 
