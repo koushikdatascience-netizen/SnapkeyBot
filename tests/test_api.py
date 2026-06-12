@@ -33,10 +33,12 @@ def test_tenant_can_connect_and_execute_tool(client):
 
 def test_health_and_ui_are_served(client):
     assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/deployment-info").json()["release"] == "meeting-presenter-v1"
     response = client.get("/")
     assert response.status_code == 200
     assert "What can we move" in response.text
     assert client.get("/director").status_code == 200
+    assert client.get("/presenter").status_code == 200
 
 
 def test_live_agent_bundle_includes_universal_workspace_tools(client):

@@ -18,6 +18,9 @@ initialize();
 async function initialize() {
   await loadConfig();
   if (token) showWorkspace();
+  if (window.location.pathname === "/presenter") {
+    document.querySelector("#live-agent").classList.remove("hidden");
+  }
 }
 
 async function loadConfig() {

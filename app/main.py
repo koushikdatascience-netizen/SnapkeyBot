@@ -46,6 +46,16 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/deployment-info")
+async def deployment_info() -> dict[str, str]:
+    return {
+        "app": "snapkey-assistant",
+        "release": "meeting-presenter-v1",
+        "presenter_path": "/presenter?demo_session=meeting1",
+        "director_path": "/director",
+    }
+
+
 @app.get("/api/config", response_model=AppConfigResponse)
 async def app_config() -> AppConfigResponse:
     settings = get_settings()
@@ -70,3 +80,8 @@ async def index() -> FileResponse:
 @app.get("/director", include_in_schema=False)
 async def director() -> FileResponse:
     return FileResponse(static_dir / "director.html")
+
+
+@app.get("/presenter", include_in_schema=False)
+async def presenter() -> FileResponse:
+    return FileResponse(static_dir / "index.html")

@@ -2,7 +2,7 @@ let directorSocket = null;
 
 function updatePresenterLink() {
   const session = document.querySelector("#director-session").value.trim() || "meeting1";
-  document.querySelector("#presenter-link").textContent = `${window.location.origin}/?demo_session=${encodeURIComponent(session)}`;
+  document.querySelector("#presenter-link").textContent = `${window.location.origin}/presenter?demo_session=${encodeURIComponent(session)}`;
 }
 
 window.connectDirector = function connectDirector() {

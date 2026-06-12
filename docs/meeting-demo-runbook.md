@@ -16,7 +16,7 @@ Director scene controls prompt that same interruptible live agent to explain eac
 
 On the owner's computer, open:
 
-`https://YOUR-APP.up.railway.app/?demo_session=meeting1`
+`https://YOUR-APP.up.railway.app/presenter?demo_session=meeting1`
 
 On your computer, open:
 
