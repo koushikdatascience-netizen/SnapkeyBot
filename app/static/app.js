@@ -556,7 +556,7 @@ function prefillPrompt(value) {
   prompt.focus();
 }
 
-window.SnapkeyUI = { api, renderPresentation, prefillPrompt };
+window.SnapkeyUI = { api, renderPresentation, prefillPrompt, isAuthenticated: () => Boolean(token) };
 
 async function streamAudioResponse(response) {
   if (!window.MediaSource || !MediaSource.isTypeSupported("audio/mpeg")) {

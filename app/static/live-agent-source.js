@@ -312,7 +312,9 @@ function retailReportIntent(text) {
   else if (/\b(customer|visits)\b/.test(value)) reportName = "customer_visits";
   else if (/\bstock.*categor|categor.*stock\b/.test(value)) reportName = "stock_by_category";
   else if (/\bcategor/.test(value)) reportName = "category_sales";
-  const days = /\btoday\b/.test(value) ? 1
+  const explicitDays = value.match(/\b(?:last|past|previous)\s+(\d{1,3})\s+days?\b/);
+  const days = explicitDays ? Number(explicitDays[1])
+    : /\btoday\b/.test(value) ? 1
     : /\byesterday\b/.test(value) ? 2
     : /\bweek\b/.test(value) ? 7
     : /\bmonth\b/.test(value) ? 30
@@ -1015,6 +1017,11 @@ function requestConfirmation(parameters = {}) {
 
 window.startLiveConversation = async function startLiveConversation() {
   if (conversation) return;
+  if (!window.SnapkeyUI.isAuthenticated()) {
+    setState("idle", "Sign in to start.", "Your account securely connects your business tools and reports.");
+    window.showAccount();
+    return;
+  }
   setConnected(true);
   setState("connecting", "Joining the conversation…", "Please allow microphone access when your browser asks.");
   try {
