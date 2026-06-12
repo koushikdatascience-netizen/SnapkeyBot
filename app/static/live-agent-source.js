@@ -87,15 +87,6 @@ function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
 }
 
-window.askLiveAgent = function askLiveAgent(prompt) {
-  if (conversation?.isOpen()) {
-    conversation.sendUserMessage(prompt);
-    setState("thinking", "Working on it.", prompt);
-    return;
-  }
-  setState("idle", "Start the conversation first.", "Then ask by voice or use these quick actions.");
-};
-
 function setState(state, title, caption) {
   const presence = document.querySelector("#live-agent-presence");
   presence.dataset.state = state;
@@ -1034,7 +1025,6 @@ window.startLiveConversation = async function startLiveConversation() {
       dynamicVariables: { snapkey_tool_token: response.tool_token },
       overrides: {
         agent: { language: response.language || "hi" },
-        tts: response.voice_id ? { voiceId: response.voice_id } : undefined,
       },
       clientTools,
       onConnect: () => {
@@ -1047,6 +1037,13 @@ window.startLiveConversation = async function startLiveConversation() {
           "Explain successful visible workspaces briefly. Require confirmation before sending email, creating events, " +
           "or performing consequential browser actions."
         );
+        window.setTimeout(() => {
+          if (conversation?.isOpen()) {
+            conversation.sendUserMessage(
+              "Greet me naturally in one short sentence, introduce yourself as Snapkey, and ask how you can help."
+            );
+          }
+        }, 350);
         setState("listening", "I’m listening.", "Speak naturally. You can interrupt me at any time.");
       },
       onDisconnect: () => {

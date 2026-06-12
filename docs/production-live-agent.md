@@ -4,9 +4,11 @@ The primary customer entry point is:
 
 `https://YOUR-DOMAIN/live`
 
-The customer signs in once, starts the interruptible ElevenLabs conversation, and then uses voice or the
-mobile quick actions. Workspaces open beside the live voice on desktop and as a full-screen switchable view
-on mobile.
+The customer signs in once and starts the interruptible ElevenLabs conversation. Workspaces open beside
+the live voice on desktop and as a full-screen switchable view on mobile.
+
+Configure the production voice directly in the ElevenLabs agent dashboard. The browser does not override
+the agent voice, avoiding silent sessions when voice overrides are restricted or a voice ID changes.
 
 ## Supported Live Capabilities
 

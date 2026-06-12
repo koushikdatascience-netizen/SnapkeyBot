@@ -144,8 +144,6 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .voice-bars i { width: 3px; height: 5px; border-radius: 99px; background: #8268ff; opacity: .35; }
 .live-agent-presence[data-state="speaking"] .voice-bars i, .live-agent-presence[data-state="listening"] .voice-bars i { animation: liveBar .8s ease-in-out infinite alternate; }
 .voice-bars i:nth-child(2), .voice-bars i:nth-child(6) { animation-delay: -.3s !important; }.voice-bars i:nth-child(3), .voice-bars i:nth-child(5) { animation-delay: -.5s !important; }.voice-bars i:nth-child(4) { animation-delay: -.7s !important; }
-.live-quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; max-width: 580px; margin-top: 14px; }
-.live-quick-actions button { padding: 8px 11px; border: 1px solid #e2ddec; border-radius: 99px; color: #625775; background: #ffffffc9; font-size: 9px; font-weight: 800; backdrop-filter: blur(12px); }
 .live-agent-controls { position: relative; z-index: 4; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px 20px max(34px, env(safe-area-inset-bottom)); }
 .live-start { padding: 15px 22px; border: 0; border-radius: 99px; color: #111; background: white; font-weight: 800; box-shadow: 0 10px 40px #0008; }
 .round-control { width: 68px; height: 68px; border: 1px solid #dedbea; border-radius: 50%; color: #171717; background: #ffffffd9; font-size: 10px; font-weight: 750; backdrop-filter: blur(16px); box-shadow: 0 10px 32px #392a6b18; }
@@ -314,7 +312,6 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
   .character-halo { width: 210px; height: 210px; }
   .live-agent-body.has-workspace .character-halo { width: 180px; height: 180px; }
   .live-agent-presence h2 { font-size: 46px; }
-  .live-quick-actions { padding: 0 8px; }
   .live-workspace { display: none; max-height: none; height: 100%; margin: 0; padding: 17px 14px 120px; border-radius: 0; box-shadow: none; }
   .live-agent-body.mobile-workspace-open .live-workspace { display: block; }
   .live-agent-controls { position: fixed; inset: auto 0 0; background: linear-gradient(transparent, #f8f8f8f2 35%); }
