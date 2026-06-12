@@ -39,6 +39,7 @@ def test_health_and_ui_are_served(client):
     assert "What can we move" in response.text
     assert client.get("/director").status_code == 200
     assert client.get("/presenter").status_code == 200
+    assert client.get("/live").status_code == 200
 
 
 def test_live_agent_bundle_includes_universal_workspace_tools(client):
@@ -54,6 +55,8 @@ def test_live_agent_bundle_includes_universal_workspace_tools(client):
     assert "SIMULATED DEMO" in response.text
     assert "Browser connection issue" in response.text
     assert "sendContextualUpdate" in response.text
+    assert "control_media" in response.text
+    assert "live-report-controls" in response.text
     assert "Live voice could not connect" in response.text
     assert 'querySelector("#live-agent").classList.remove("hidden")' in response.text
 

@@ -75,3 +75,17 @@ async def test_report_uses_local_connector_when_configured(monkeypatch):
     assert captured["path"] == "/reports/run"
     assert captured["payload"]["days"] == 90
     assert captured["payload"]["limit"] == 50
+
+
+@pytest.mark.asyncio
+async def test_report_allows_safe_chart_override(monkeypatch):
+    settings = retail_reports.get_settings()
+    monkeypatch.setattr(settings, "report_database_url", "mysql+asyncmy://configured")
+    monkeypatch.setattr(settings, "report_tenant_id", "shop-1")
+    monkeypatch.setattr(retail_reports, "_report_engine", lambda: FakeEngine())
+
+    result = await retail_reports.run_retail_report(
+        "sales_summary", tenant_id="shop-1", limit=5000, chart="donut"
+    )
+
+    assert result["chart"] == "donut"

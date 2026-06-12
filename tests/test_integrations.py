@@ -122,11 +122,12 @@ def test_purpose_token_cannot_access_normal_api(authenticated_client):
 def test_retail_report_calls_bounded_reporting_service(authenticated_client, monkeypatch):
     from app.api import integrations
 
-    async def fake_report(report_name, *, tenant_id, days, limit):
+    async def fake_report(report_name, *, tenant_id, days, limit, chart):
         assert report_name == "top_products"
         assert tenant_id == "shop-1"
         assert days == 30
         assert limit == 20
+        assert chart == "line"
         return {
             "report_name": report_name,
             "title": "Top-selling products",
@@ -145,7 +146,7 @@ def test_retail_report_calls_bounded_reporting_service(authenticated_client, mon
         "/api/integrations/execute/retail_report",
         headers=headers,
         json={
-            "arguments": {"report_name": "top_products", "days": 30, "limit": 20},
+            "arguments": {"report_name": "top_products", "days": 30, "limit": 20, "chart": "line"},
             "confirmed": False,
         },
     )

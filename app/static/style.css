@@ -144,6 +144,8 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .voice-bars i { width: 3px; height: 5px; border-radius: 99px; background: #8268ff; opacity: .35; }
 .live-agent-presence[data-state="speaking"] .voice-bars i, .live-agent-presence[data-state="listening"] .voice-bars i { animation: liveBar .8s ease-in-out infinite alternate; }
 .voice-bars i:nth-child(2), .voice-bars i:nth-child(6) { animation-delay: -.3s !important; }.voice-bars i:nth-child(3), .voice-bars i:nth-child(5) { animation-delay: -.5s !important; }.voice-bars i:nth-child(4) { animation-delay: -.7s !important; }
+.live-quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; max-width: 580px; margin-top: 14px; }
+.live-quick-actions button { padding: 8px 11px; border: 1px solid #e2ddec; border-radius: 99px; color: #625775; background: #ffffffc9; font-size: 9px; font-weight: 800; backdrop-filter: blur(12px); }
 .live-agent-controls { position: relative; z-index: 4; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px 20px max(34px, env(safe-area-inset-bottom)); }
 .live-start { padding: 15px 22px; border: 0; border-radius: 99px; color: #111; background: white; font-weight: 800; box-shadow: 0 10px 40px #0008; }
 .round-control { width: 68px; height: 68px; border: 1px solid #dedbea; border-radius: 50%; color: #171717; background: #ffffffd9; font-size: 10px; font-weight: 750; backdrop-filter: blur(16px); box-shadow: 0 10px 32px #392a6b18; }
@@ -204,11 +206,21 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
 .live-media-state { position: absolute; z-index: 1; inset: 0; display: grid; place-items: center; padding: 24px; color: #695b91; text-align: center; font-size: 13px; font-weight: 750; }
 .live-media-link { display: inline-flex; margin-top: 12px; padding: 10px 14px; color: white; background: #171717; border-radius: 10px; text-decoration: none; font-size: 11px; font-weight: 800; }
 .live-report-chart { display: grid; gap: 8px; padding: 16px; background: white; border: 1px solid #e8e8e8; border-radius: 18px; }
+.live-report-controls, .live-media-controls { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.live-report-controls button, .live-media-controls button { padding: 8px 11px; border: 1px solid #e2ddec; border-radius: 99px; color: #625775; background: white; font-size: 9px; font-weight: 800; text-transform: capitalize; }
+.live-report-controls button.active { color: white; background: #6c55db; border-color: #6c55db; }
 .live-report-item { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(120px, 3fr) auto; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; outline: none; transition: .2s ease; }
 .live-report-item:hover, .live-report-item:focus { background: #f6f3ff; transform: translateX(2px); }
 .live-report-item span { overflow: hidden; color: #555; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .live-report-item i { display: block; width: var(--value); height: 9px; border-radius: 99px; background: linear-gradient(90deg, #8268ff, #4bc8ed, #5fd29a); box-shadow: 0 3px 10px #8268ff22; transition: width .4s ease; }
 .live-report-item strong { min-width: 58px; color: #24202f; font-size: 11px; text-align: right; }
+.live-report-chart.line .live-report-item i { height: 3px; background: #8268ff; box-shadow: 0 0 0 4px #8268ff18; }
+.live-report-chart.table .live-report-item i { display: none; }
+.live-report-chart.table .live-report-item { grid-template-columns: 1fr auto; border-bottom: 1px solid #eee; border-radius: 0; }
+.live-report-chart.donut { position: relative; display: grid; grid-template-columns: repeat(2, 1fr); padding-left: min(45%, 210px); }
+.live-report-chart.donut::before { content: ""; position: absolute; left: 18px; top: 50%; width: min(30vw, 160px); aspect-ratio: 1; transform: translateY(-50%); border-radius: 50%; background: var(--donut); box-shadow: inset 0 0 0 34px white; }
+.live-report-chart.donut .live-report-item { grid-template-columns: 1fr auto; }
+.live-report-chart.donut .live-report-item i { display: none; }
 .live-report-footer { margin-top: 10px; color: #777; font-size: 10px; font-weight: 700; text-align: right; }
 .monitoring-demo-notice { margin-bottom: 12px; padding: 8px 10px; color: #7a5900; background: #fff4ba; border: 1px solid #efd96e; border-radius: 10px; font-size: 9px; font-weight: 850; letter-spacing: .08em; text-align: center; }
 .monitoring-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 10px; }
@@ -302,6 +314,7 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
   .character-halo { width: 210px; height: 210px; }
   .live-agent-body.has-workspace .character-halo { width: 180px; height: 180px; }
   .live-agent-presence h2 { font-size: 46px; }
+  .live-quick-actions { padding: 0 8px; }
   .live-workspace { display: none; max-height: none; height: 100%; margin: 0; padding: 17px 14px 120px; border-radius: 0; box-shadow: none; }
   .live-agent-body.mobile-workspace-open .live-workspace { display: block; }
   .live-agent-controls { position: fixed; inset: auto 0 0; background: linear-gradient(transparent, #f8f8f8f2 35%); }
@@ -309,6 +322,8 @@ svg { width: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-l
   .live-embed, .browser-live-view { min-height: 62vh; }
   .live-report-chart { padding: 10px; }
   .live-report-item { grid-template-columns: minmax(74px, 1fr) minmax(70px, 1.5fr) auto; gap: 7px; padding: 6px 4px; }
+  .live-report-chart.donut { grid-template-columns: 1fr; padding: 180px 10px 10px; }
+  .live-report-chart.donut::before { left: 50%; top: 12px; width: 150px; transform: translateX(-50%); }
   .monitoring-grid, .monitoring-grid.focused { grid-template-columns: 1fr; }
   .camera-tile:first-child { grid-column: auto; }
   .camera-scene { min-height: 210px; }

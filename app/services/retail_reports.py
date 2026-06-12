@@ -233,6 +233,7 @@ async def run_retail_report(
     tenant_id: str,
     days: int = 7,
     limit: int = 20,
+    chart: str = "",
 ) -> dict[str, Any]:
     settings = get_settings()
     report = REPORTS.get(report_name)
@@ -242,7 +243,7 @@ async def run_retail_report(
     bounded_days = max(1, min(int(days), settings.report_max_days))
     bounded_limit = max(1, min(int(limit), settings.report_max_points))
     if settings.report_connector_url:
-        return await _connector_request(
+        result = await _connector_request(
             "/reports/run",
             {
                 "report_name": report_name,
@@ -251,6 +252,9 @@ async def run_retail_report(
                 "limit": bounded_limit,
             },
         )
+        if chart in {"bar", "line", "donut", "table"}:
+            result["chart"] = chart
+        return result
     end_date = date.today() + timedelta(days=1)
     start_date = end_date - timedelta(days=bounded_days)
     statement = text(report["sql"])
@@ -282,7 +286,7 @@ async def run_retail_report(
     return {
         "report_name": report_name,
         "title": report["title"],
-        "chart": report["chart"],
+        "chart": chart if chart in {"bar", "line", "donut", "table"} else report["chart"],
         "period": {"start": start_date.isoformat(), "end": (end_date - timedelta(days=1)).isoformat()},
         "rows": rows,
         "total": total,

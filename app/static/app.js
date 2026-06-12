@@ -18,10 +18,16 @@ initialize();
 async function initialize() {
   await loadConfig();
   if (token) showWorkspace();
-  if (window.location.pathname === "/presenter") {
+  if (["/live", "/presenter"].includes(window.location.pathname)) {
     document.querySelector("#live-agent").classList.remove("hidden");
   }
 }
+
+function showAccount() {
+  closeLiveAgent();
+  document.querySelector(token ? "#workspace" : "#auth").classList.remove("hidden");
+}
+window.showAccount = showAccount;
 
 async function loadConfig() {
   try {

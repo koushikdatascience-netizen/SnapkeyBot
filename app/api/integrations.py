@@ -266,6 +266,7 @@ async def _execute_integration(
                 tenant_id=report_tenant_for(user.email),
                 days=int(args.get("days", 7)),
                 limit=int(args.get("limit", 20)),
+                chart=str(args.get("chart", "")),
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc

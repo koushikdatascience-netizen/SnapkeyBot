@@ -9,9 +9,14 @@ let lastBrowserIntent = "";
 let lastYouTubeIntent = "";
 let lastReportIntent = "";
 let lastMonitoringIntent = "";
+let lastCalendarIntent = "";
 let monitoringClock = null;
 let demoSequenceTimer = null;
 let remoteDirectorSocket = null;
+let activeReport = null;
+let activeYouTubeFrame = null;
+let activeYouTubeVideos = [];
+let activeYouTubeIndex = 0;
 
 const demoScenes = {
   intro: { title: "Good evening, Mr. Biswajit.", caption: "I am Snapkey, your live business assistant. Tell me, how may I assist you?", agentPrompt: "Hindi mein warmly greet Mr. Biswajit, introduce yourself as Snapkey, and ask how you may assist him. Keep it under two sentences.", workspace: { type: "brief", title: "Snapkey is ready", summary: "Voice-first intelligence for your business.", details: ["Live business insights", "Calendar and operations", "Camera monitoring", "Always ready to assist"] } },
@@ -82,6 +87,15 @@ function updateAgentContext(message) {
   if (conversation?.isOpen()) conversation.sendContextualUpdate(message);
 }
 
+window.askLiveAgent = function askLiveAgent(prompt) {
+  if (conversation?.isOpen()) {
+    conversation.sendUserMessage(prompt);
+    setState("thinking", "Working on it.", prompt);
+    return;
+  }
+  setState("idle", "Start the conversation first.", "Then ask by voice or use these quick actions.");
+};
+
 function setState(state, title, caption) {
   const presence = document.querySelector("#live-agent-presence");
   presence.dataset.state = state;
@@ -141,6 +155,8 @@ const clientTools = {
   show_progress_workspace: parameters => showWorkspace({ type: "progress", ...parameters }),
   show_brief_workspace: parameters => showWorkspace({ type: "brief", ...parameters }),
   show_monitoring_workspace: parameters => showWorkspace({ type: "monitoring", ...parameters }),
+  control_media: parameters => controlMedia(parameters),
+  control_report: parameters => controlReport(parameters),
   request_human_operator: parameters => {
     window.SnapkeyUI.prefillPrompt(parameters.request || "Please connect me with a human operator.");
     return "The request is prepared in the text workspace for the user to send.";
@@ -178,6 +194,8 @@ async function runIntegration(parameters = {}) {
     confirmed: Boolean(parameters.confirmed),
   });
   if (tool === "youtube_search" && result.videos?.length) {
+    activeYouTubeVideos = result.videos;
+    activeYouTubeIndex = 0;
     const video = result.videos[0];
     renderLiveWorkspace({
       type: "youtube",
@@ -185,6 +203,7 @@ async function runIntegration(parameters = {}) {
       summary: `Playing from ${video.channel}`,
       embed_url: video.embed_url,
       watch_url: `https://www.youtube.com/watch?v=${video.id}`,
+      videos: result.videos,
     });
   } else if (tool === "retail_report") {
     renderLiveWorkspace({
@@ -299,7 +318,18 @@ function retailReportIntent(text) {
     : /\bmonth\b/.test(value) ? 30
     : /\bquarter\b/.test(value) ? 90
     : 7;
-  return { report_name: reportName, days, limit: 20 };
+  const limitMatch = value.match(/\b(?:top|show|first)\s+(\d{1,2})\b/);
+  const chart = /\b(donut|pie)\b/.test(value) ? "donut"
+    : /\b(line|trend)\b/.test(value) ? "line"
+    : /\b(table|list)\b/.test(value) ? "table"
+    : /\b(bar|chart|graph)\b/.test(value) ? "bar"
+    : "";
+  return {
+    report_name: reportName,
+    days,
+    limit: limitMatch ? Number(limitMatch[1]) : 20,
+    chart,
+  };
 }
 
 async function handleAutomaticRetailReport(text) {
@@ -331,6 +361,33 @@ async function handleAutomaticRetailReport(text) {
     updateAgentContext(`The retail report failed because: ${error?.message || "report connection failed"}.`);
     return false;
   }
+}
+
+function reportChartIntent(text) {
+  const value = text.toLowerCase();
+  if (/\b(donut|pie)\b/.test(value)) return "donut";
+  if (/\b(line|trend)\b/.test(value)) return "line";
+  if (/\b(table|list)\b/.test(value)) return "table";
+  if (/\b(bar|graph)\b/.test(value)) return "bar";
+  return "";
+}
+
+function controlReport(parameters = {}) {
+  const chart = parameters.chart || "";
+  if (!activeReport || !["bar", "line", "donut", "table"].includes(chart)) {
+    return "No active report or unsupported chart type";
+  }
+  renderLiveWorkspace({ ...activeReport, chart });
+  return `Active report changed to ${chart}`;
+}
+
+function handleAutomaticReportDisplay(text) {
+  if (!activeReport) return false;
+  const chart = reportChartIntent(text);
+  if (!chart || !/\b(change|switch|show|make|convert|view|chart|graph|table|list|donut|pie|line|bar)\b/i.test(text)) return false;
+  controlReport({ chart });
+  updateAgentContext(`The visible report was changed to a ${chart} view.`);
+  return true;
 }
 
 function monitoringIntent(text) {
@@ -384,11 +441,90 @@ function browserIntentUrl(text) {
 
 function youtubeIntentQuery(text) {
   if (!/\b(youtube|play|video)\b/i.test(text)) return "";
+  if (mediaControlIntent(text)) return "";
   return text
     .replace(/^(please\s+)?(open|search|find|show|play|watch)\s+/i, "")
     .replace(/\s+(on|in)\s+youtube\s*$/i, "")
     .replace(/^youtube\s+/i, "")
     .trim();
+}
+
+function mediaControlIntent(text) {
+  const value = text.toLowerCase();
+  if (!/\b(video|youtube|music|song|media|playback|pause|resume|next|previous|mute|unmute|stop)\b/.test(value)) return "";
+  if (/\b(pause|hold)\b/.test(value)) return "pause";
+  if (/\b(resume|continue)\b/.test(value)) return "play";
+  if (/\b(next|forward)\b/.test(value)) return "next";
+  if (/\b(previous|back|last video)\b/.test(value)) return "previous";
+  if (/\bunmute\b/.test(value)) return "unmute";
+  if (/\bmute\b/.test(value)) return "mute";
+  if (/\bstop\b/.test(value)) return "stop";
+  return "";
+}
+
+function youtubeCommand(command) {
+  activeYouTubeFrame?.contentWindow?.postMessage(JSON.stringify({
+    event: "command",
+    func: command,
+    args: [],
+  }), "*");
+}
+
+function showYouTubeAt(index) {
+  if (!activeYouTubeVideos.length) return false;
+  activeYouTubeIndex = (index + activeYouTubeVideos.length) % activeYouTubeVideos.length;
+  const video = activeYouTubeVideos[activeYouTubeIndex];
+  renderLiveWorkspace({
+    type: "youtube",
+    title: video.title,
+    summary: `Playing from ${video.channel}`,
+    embed_url: video.embed_url,
+    watch_url: `https://www.youtube.com/watch?v=${video.id}`,
+    videos: activeYouTubeVideos,
+  });
+  return true;
+}
+
+function controlMedia(parameters = {}) {
+  const action = parameters.action || "";
+  if (action === "next") showYouTubeAt(activeYouTubeIndex + 1);
+  else if (action === "previous") showYouTubeAt(activeYouTubeIndex - 1);
+  else youtubeCommand({
+    play: "playVideo",
+    pause: "pauseVideo",
+    stop: "stopVideo",
+    mute: "mute",
+    unmute: "unMute",
+  }[action]);
+  return `Media ${action || "control"} completed`;
+}
+
+function handleAutomaticMediaControl(text) {
+  const action = mediaControlIntent(text);
+  if (!action) return false;
+  controlMedia({ action });
+  updateAgentContext(`The visible media player completed the ${action} command.`);
+  return true;
+}
+
+async function handleAutomaticCalendarIntent(text) {
+  const value = text.toLowerCase();
+  if (!/\b(calendar|schedule|appointments?|meetings?)\b/.test(value) || /\b(create|add|book|fix|schedule a)\b/.test(value)) return false;
+  const key = value.replace(/\s+/g, " ").trim();
+  if (key === lastCalendarIntent) return false;
+  lastCalendarIntent = key;
+  try {
+    await runIntegration({ tool_name: "calendar_events", arguments: { max_results: 20 } });
+    updateAgentContext("The user's live Google Calendar is visible. Summarize the most relevant events.");
+    return true;
+  } catch (error) {
+    renderLiveWorkspace({
+      type: "brief",
+      title: "Calendar connection issue",
+      summary: error?.message || "Connect Google Calendar to continue.",
+    });
+    return false;
+  }
 }
 
 async function handleAutomaticYouTubeIntent(text) {
@@ -653,9 +789,32 @@ function stopMonitoringClock() {
 function renderReport(workspace, data) {
   const rows = Array.isArray(data.rows) ? data.rows.slice(0, 50) : [];
   if (!rows.length) return renderDetailList(workspace, ["No matching report data was found."]);
+  activeReport = { ...data, rows };
+  const controls = document.createElement("div");
+  controls.className = "live-report-controls";
+  ["bar", "line", "donut", "table"].forEach(chart => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = chart;
+    button.classList.toggle("active", (data.chart || "bar") === chart);
+    button.onclick = () => renderLiveWorkspace({ ...activeReport, chart });
+    controls.append(button);
+  });
+  workspace.append(controls);
   const panel = document.createElement("div");
-  panel.className = `live-report-chart ${data.chart === "line" ? "line" : "bar"}`;
+  panel.className = `live-report-chart ${data.chart || "bar"}`;
   const maximum = Math.max(...rows.map(row => Number(row.value) || 0), 1);
+  if (data.chart === "donut") {
+    const total = Math.max(rows.reduce((sum, row) => sum + (Number(row.value) || 0), 0), 1);
+    let position = 0;
+    const colors = ["#8268ff", "#4bc8ed", "#5fd29a", "#f6c945", "#ff7696", "#5b63d3"];
+    const stops = rows.map((row, index) => {
+      const start = position;
+      position += (Number(row.value) || 0) / total * 100;
+      return `${colors[index % colors.length]} ${start}% ${position}%`;
+    });
+    panel.style.setProperty("--donut", `conic-gradient(${stops.join(",")})`);
+  }
   rows.forEach(row => {
     const item = document.createElement("div");
     item.className = "live-report-item";
@@ -695,15 +854,28 @@ function renderYouTube(workspace, data) {
   state.textContent = "Loading the video…";
   const frame = document.createElement("iframe");
   frame.className = "live-embed";
-  frame.src = url;
+  frame.src = url.includes("enablejsapi=1") ? url : `${url}${url.includes("?") ? "&" : "?"}enablejsapi=1`;
   frame.allow = "autoplay; encrypted-media; picture-in-picture";
   frame.allowFullscreen = true;
-  frame.onload = () => state.classList.add("hidden");
+  frame.onload = () => {
+    activeYouTubeFrame = frame;
+    state.classList.add("hidden");
+  };
   frame.onerror = () => {
     state.textContent = "The embedded player could not load. Open it directly instead.";
   };
   panel.append(state, frame);
   workspace.append(panel);
+  const controls = document.createElement("div");
+  controls.className = "live-media-controls";
+  [["previous", "Previous"], ["play", "Play"], ["pause", "Pause"], ["next", "Next"], ["mute", "Mute"]].forEach(([action, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.onclick = () => controlMedia({ action });
+    controls.append(button);
+  });
+  workspace.append(controls);
   if (watchUrl) appendExternalLink(workspace, watchUrl, "Open on YouTube");
 }
 
@@ -844,7 +1016,6 @@ function requestConfirmation(parameters = {}) {
 window.startLiveConversation = async function startLiveConversation() {
   if (conversation) return;
   setConnected(true);
-  window.runDemoScene("intro");
   setState("connecting", "Joining the conversation…", "Please allow microphone access when your browser asks.");
   try {
     await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -861,7 +1032,14 @@ window.startLiveConversation = async function startLiveConversation() {
       clientTools,
       onConnect: () => {
         setConnected(true);
-        window.setTimeout(() => window.runDemoScene("intro"), 500);
+        updateAgentContext(
+          "Snapkey live workspace is connected. You can use run_integration for retail_report, calendar_events, " +
+          "calendar_create, gmail_search, gmail_read, gmail_draft, gmail_send, and youtube_search. " +
+          "Use show_monitoring_workspace for configured camera feeds, start_browser/control_browser for web tasks, " +
+          "and control_media for play, pause, stop, next, previous, mute, or unmute. " +
+          "Explain successful visible workspaces briefly. Require confirmation before sending email, creating events, " +
+          "or performing consequential browser actions."
+        );
         setState("listening", "I’m listening.", "Speak naturally. You can interrupt me at any time.");
       },
       onDisconnect: () => {
@@ -873,8 +1051,11 @@ window.startLiveConversation = async function startLiveConversation() {
         const text = message.message || message.text;
         if (text) document.querySelector("#live-caption").textContent = text;
         if (text && message.source === "user") {
+          handleAutomaticMediaControl(text);
           handleAutomaticMonitoringIntent(text);
+          handleAutomaticReportDisplay(text);
           handleAutomaticRetailReport(text);
+          handleAutomaticCalendarIntent(text);
           handleAutomaticYouTubeIntent(text);
           handleAutomaticBrowserIntent(text);
         }

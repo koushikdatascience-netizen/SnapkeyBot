@@ -85,3 +85,8 @@ async def director() -> FileResponse:
 @app.get("/presenter", include_in_schema=False)
 async def presenter() -> FileResponse:
     return FileResponse(static_dir / "index.html")
+
+
+@app.get("/live", include_in_schema=False)
+async def live() -> FileResponse:
+    return FileResponse(static_dir / "index.html")
