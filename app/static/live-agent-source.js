@@ -148,11 +148,35 @@ const clientTools = {
   show_monitoring_workspace: parameters => showWorkspace({ type: "monitoring", ...parameters }),
   control_media: parameters => controlMedia(parameters),
   control_report: parameters => controlReport(parameters),
+  run_local_command: parameters => window.SnapkeyLocal?.executeCommand(
+    parameters.prompt || parameters.command || "",
+    { speak: false },
+  ).then(result => JSON.stringify(result)) || "Local command runtime is not ready",
   request_human_operator: parameters => {
     window.SnapkeyUI.prefillPrompt(parameters.request || "Please connect me with a human operator.");
     return "The request is prepared in the text workspace for the user to send.";
   },
 };
+
+async function handleAutomaticLocalCommand(text) {
+  const value = text.toLowerCase();
+  const isPurchaseImport = /\b(purchase import|import invoice|upload invoice|pdf invoice)\b/.test(value);
+  const isDesktopApp = /\b(open|start|launch|focus|bring|show|restore|minimize|hide|close|exit)\b/.test(value)
+    && /\b(madhushala|madhusala|erp|pos|notepad|calculator|chrome)\b/.test(value);
+  if (!isPurchaseImport && !isDesktopApp) return false;
+  if (!window.SnapkeyLocal) return false;
+  try {
+    const result = await window.SnapkeyLocal.executeCommand(text, { speak: false });
+    updateAgentContext(
+      `Snapkey completed the local command. Result: ${result.reply || "done"}. ` +
+      "Acknowledge only what the local result confirms."
+    );
+    return true;
+  } catch (error) {
+    updateAgentContext(`The local command failed because: ${error?.message || "local action failed"}.`);
+    return false;
+  }
+}
 
 function parsedArguments(value) {
   if (!value) return {};
@@ -165,11 +189,12 @@ function parsedArguments(value) {
 }
 
 async function integrationRequest(path, body) {
+  const bearer = integrationToken || localStorage.getItem("token") || "";
   const response = await fetch(`/api/integrations${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${integrationToken}`,
+      Authorization: `Bearer ${bearer}`,
     },
     body: JSON.stringify(body),
   });
@@ -197,14 +222,24 @@ async function runIntegration(parameters = {}) {
       videos: result.videos,
     });
   } else if (tool === "retail_report") {
+    const period = result.period || {};
     renderLiveWorkspace({
       type: "report",
       title: result.title,
-      summary: `${result.period.start} to ${result.period.end}. Limited to ${result.limits.points} chart points.`,
+      summary: period.start && period.end
+        ? `${period.start} to ${period.end}. Limited to ${result.limits?.points || result.rows?.length || 0} chart points.`
+        : "Live approved reporting data.",
       chart: result.chart,
       rows: result.rows,
       total: result.total,
+      insights: result.insights,
+      source: result.source,
     });
+    updateAgentContext(
+      `The visible ${result.title} report is ready. ${result.voice_summary || ""} ` +
+      "Briefly explain the strongest insight and suggest one practical next action. " +
+      "Only use the visible report facts."
+    );
   } else if (tool === "calendar_events") {
     renderLiveWorkspace({
       type: "calendar",
@@ -341,7 +376,7 @@ async function handleAutomaticRetailReport(text) {
     const result = await runIntegration({ tool_name: "retail_report", arguments: intent });
     updateAgentContext(
       `Snapkey displayed the ${intent.report_name} report successfully using a bounded ${intent.days}-day query. ` +
-      "Summarize the visible report briefly."
+      "Summarize the visible report briefly and give one practical suggestion based only on its insight cards."
     );
     return result;
   } catch (error) {
@@ -511,11 +546,12 @@ async function handleAutomaticCalendarIntent(text) {
     updateAgentContext("The user's live Google Calendar is visible. Summarize the most relevant events.");
     return true;
   } catch (error) {
-    renderLiveWorkspace({
-      type: "brief",
-      title: "Calendar connection issue",
-      summary: error?.message || "Connect Google Calendar to continue.",
-    });
+    if (window.SnapkeyLocal) {
+      const result = await window.SnapkeyLocal.executeCommand(text, { speak: false });
+      updateAgentContext(`Google Calendar is not connected, so Snapkey displayed the configured local meetings. ${result.reply}`);
+      return true;
+    }
+    renderLiveWorkspace({ type: "brief", title: "Calendar connection issue", summary: error?.message || "Connect Google Calendar to continue." });
     return false;
   }
 }
@@ -559,6 +595,7 @@ async function handleAutomaticYouTubeIntent(text) {
 
 async function handleAutomaticBrowserIntent(text) {
   if (youtubeIntentQuery(text) || monitoringIntent(text)) return;
+  if (/\b(madhushala|madhusala|erp|pos|notepad|calculator|chrome)\b/i.test(text)) return;
   const url = browserIntentUrl(text);
   const intentKey = `${text}|${url}`;
   if (!url || intentKey === lastBrowserIntent || browserStarting) return;
@@ -827,6 +864,9 @@ function renderReport(workspace, data) {
   footer.className = "live-report-footer";
   footer.textContent = `${rows.length} aggregated points shown · total ${formatReportValue(data.total)}`;
   workspace.append(footer);
+  if (Array.isArray(data.insights) && data.insights.length) {
+    renderDetailList(workspace, data.insights.map(insight => `Insight: ${insight}`));
+  }
 }
 
 function formatReportValue(value) {
@@ -1062,6 +1102,7 @@ window.startLiveConversation = async function startLiveConversation() {
           handleAutomaticCalendarIntent(text);
           handleAutomaticYouTubeIntent(text);
           handleAutomaticBrowserIntent(text);
+          handleAutomaticLocalCommand(text);
         }
       },
       onModeChange: mode => {
@@ -1102,4 +1143,28 @@ window.toggleLiveMute = async function toggleLiveMute() {
 };
 
 window.addEventListener("beforeunload", () => conversation?.endSession());
+window.SnapkeyLive = {
+  setState,
+  setConnected,
+  renderLiveWorkspace,
+  setWorkspaceVisible,
+  requestConfirmation,
+  executeWorkspaceCommand: async text => {
+    const local = await handleAutomaticLocalCommand(text);
+    if (local) return { reply: "The local action is complete." };
+    if (handleAutomaticMediaControl(text)) return { reply: "Media control completed." };
+    if (handleAutomaticMonitoringIntent(text)) return { reply: "The monitoring workspace is open." };
+    if (handleAutomaticReportDisplay(text)) return { reply: "The report view has been updated." };
+    if (await handleAutomaticRetailReport(text)) return { reply: "The requested report is ready." };
+    if (await handleAutomaticCalendarIntent(text)) return { reply: "The meetings workspace is ready." };
+    if (await handleAutomaticYouTubeIntent(text)) return { reply: "The YouTube workspace is ready." };
+    const browserUrl = browserIntentUrl(text);
+    if (browserUrl) {
+      await handleAutomaticBrowserIntent(text);
+      return { reply: "The live browser workspace is ready." };
+    }
+    if (window.SnapkeyLocal) return window.SnapkeyLocal.executeCommand(text, { speak: false });
+    return { reply: "I could not match that request to a configured workspace." };
+  },
+};
 document.documentElement.dataset.liveAgentModule = "ready";

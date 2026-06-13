@@ -177,6 +177,52 @@ def _json_value(value: Any) -> Any:
     return value
 
 
+def _report_analysis(report_name: str, rows: list[dict[str, Any]], total: float) -> tuple[list[str], str]:
+    if not rows:
+        return ["No matching data was found for the selected period."], "No matching report data was found."
+
+    ranked = sorted(rows, key=lambda row: float(row.get("value") or 0), reverse=True)
+    leader = ranked[0]
+    leader_label = str(leader.get("label") or "The leading result")
+    leader_value = round(float(leader.get("value") or 0), 2)
+    insights = [f"{leader_label} is the leading result at {leader_value:,.2f}."]
+
+    if total > 0 and report_name not in {"low_stock", "stock_by_category", "customer_visits"}:
+        share = round(leader_value / total * 100, 1)
+        insights.append(f"The leading result contributes {share}% of the displayed total.")
+
+    if report_name in {"sales_summary", "average_bill", "purchase_trend"} and len(rows) > 1:
+        first = float(rows[0].get("value") or 0)
+        last = float(rows[-1].get("value") or 0)
+        if first:
+            change = round((last - first) / abs(first) * 100, 1)
+            direction = "up" if change >= 0 else "down"
+            insights.append(f"The latest point is {direction} {abs(change)}% from the first displayed point.")
+    elif report_name == "low_stock":
+        insights.append(f"{len(rows)} products need stock review or replenishment.")
+    elif report_name == "payment_mix" and total > 0:
+        insights.append(f"{leader_label} is the dominant payment method in this view.")
+    elif len(ranked) > 1:
+        gap = round(leader_value - float(ranked[1].get("value") or 0), 2)
+        insights.append(f"The lead over the next result is {gap:,.2f}.")
+
+    voice_summary = f"{leader_label} leads at {leader_value:,.2f}."
+    if len(insights) > 1:
+        voice_summary = f"{voice_summary} {insights[1]}"
+    return insights[:3], voice_summary
+
+
+def _enrich_report(result: dict[str, Any], report_name: str, source: str) -> dict[str, Any]:
+    rows = list(result.get("rows") or [])
+    total = round(float(result.get("total") or sum(float(row.get("value") or 0) for row in rows)), 2)
+    insights, voice_summary = _report_analysis(report_name, rows, total)
+    result["total"] = total
+    result["insights"] = insights
+    result["voice_summary"] = voice_summary
+    result["source"] = source
+    return result
+
+
 async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
     settings = get_settings()
     if settings.report_connector_url:
@@ -254,7 +300,7 @@ async def run_retail_report(
         )
         if chart in {"bar", "line", "donut", "table"}:
             result["chart"] = chart
-        return result
+        return _enrich_report(result, report_name, "local_connector")
     end_date = date.today() + timedelta(days=1)
     start_date = end_date - timedelta(days=bounded_days)
     statement = text(report["sql"])
@@ -283,7 +329,7 @@ async def run_retail_report(
         raise RuntimeError("Unable to query the retail reporting database") from exc
 
     total = round(sum(float(row.get("value") or 0) for row in rows), 2)
-    return {
+    return _enrich_report({
         "report_name": report_name,
         "title": report["title"],
         "chart": chart if chart in {"bar", "line", "donut", "table"} else report["chart"],
@@ -291,7 +337,7 @@ async def run_retail_report(
         "rows": rows,
         "total": total,
         "limits": {"days": bounded_days, "points": bounded_limit},
-    }
+    }, report_name, "railway_postgres")
 
 
 async def _connector_request(path: str, payload: dict[str, Any]) -> dict[str, Any]:

@@ -26,9 +26,9 @@
   <main class="shell">
     <section class="auth-card" id="auth">
       <div class="aura compact"><span></span><span></span><span></span></div>
-      <p class="kicker">HUMAN-ASSISTED PREVIEW</p>
+      <p class="kicker">MADHUSHALA BUSINESS ASSISTANT</p>
       <h1>Meet your ideas<br>with momentum.</h1>
-      <p class="muted">Sign in to start a live Snapkey concierge conversation.</p>
+      <p class="muted">Sign in to explore live reports, operations, meetings, and business tools.</p>
       <label>Email<input id="email" type="email" placeholder="you@company.com" autocomplete="email"></label>
       <label>Password<input id="password" type="password" placeholder="8+ characters" autocomplete="current-password"></label>
       <div class="auth-actions">
@@ -39,12 +39,12 @@
     </section>
 
     <section class="chat hidden" id="workspace">
-      <div class="demo-ribbon">LIVE ASSISTED DEMO</div>
+      <div class="demo-ribbon">LIVE BUSINESS ASSISTANT</div>
       <div class="intro" id="intro">
         <div class="aura" id="assistant-aura"><span></span><span></span><span></span></div>
         <p class="kicker">SNAPKEY CONCIERGE</p>
         <h2>What can we move<br>forward today?</h2>
-        <p>Share a question, image, voice note, or file. A live concierge is here to help.</p>
+        <p>Ask for sales, stock, purchases, meetings, cameras, videos, or a business insight.</p>
       </div>
       <section class="agent-stage hidden" id="agent-stage" aria-live="polite"></section>
       <div class="messages" id="messages" aria-live="polite"></div>
@@ -65,7 +65,7 @@
           <svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 5v14"/></svg>
         </button>
       </form>
-      <p class="privacy-note">Human-assisted preview. Avoid sharing sensitive information.</p>
+      <p class="privacy-note">Approved reporting queries only. External actions require confirmation.</p>
     </section>
   </main>
   <section class="live-agent hidden" id="live-agent" aria-live="polite">
@@ -104,9 +104,10 @@
       </div>
       <footer><button type="button" onclick="runDemoSequence()">Auto sequence</button><button type="button" onclick="stopDemoNarration()">Stop narration</button></footer>
     </aside>
-    <p class="privacy-note live-note">Microphone audio is processed by ElevenLabs during the live session.</p>
+    <p class="privacy-note live-note" id="live-privacy">Microphone audio is processed by the configured voice runtime.</p>
   </section>
   <script src="/static/app.js"></script>
   <script type="module" src="/static/live-agent.js"></script>
+  <script type="module" src="/static/local-voice.js"></script>
 </body>
 </html>

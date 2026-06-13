@@ -6,12 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, chat, integrations, operator, tools, voice
+from app.api import auth, chat, integrations, local_voice, operator, tools, voice
 from app.config import get_settings
 from app.database import create_tables
 from app.schemas import AppConfigResponse
 from app.services.telegram import telegram_webhook_ready
 from app.services.elevenlabs import live_agent_ready, voice_ready
+from app.services.local_voice import local_voice_ready
 
 
 @asynccontextmanager
@@ -35,6 +36,7 @@ app.include_router(tools.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(operator.router, prefix="/api")
 app.include_router(voice.router, prefix="/api")
+app.include_router(local_voice.router, prefix="/api")
 app.include_router(integrations.router, prefix="/api")
 
 static_dir = Path(__file__).parent / "static"
@@ -65,6 +67,10 @@ async def app_config() -> AppConfigResponse:
         max_upload_bytes=settings.max_upload_bytes,
         voice_ready=voice_ready(),
         live_agent_ready=live_agent_ready(),
+        local_voice_ready=local_voice_ready(),
+        local_voice_enabled=settings.local_voice_enabled,
+        local_voice_silence_ms=settings.local_voice_silence_ms,
+        local_voice_min_speech_ms=settings.local_voice_min_speech_ms,
         monitoring_camera_urls=[
             url.strip() for url in settings.monitoring_camera_urls.split(",") if url.strip()
         ][:3],

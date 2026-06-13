@@ -46,6 +46,9 @@ async def test_report_limits_large_requests(monkeypatch):
 
     assert result["limits"] == {"days": 90, "points": 50}
     assert result["total"] == 30.0
+    assert result["source"] == "railway_postgres"
+    assert result["insights"]
+    assert "B leads at 20.00" in result["voice_summary"]
 
 
 def test_report_tenant_map_prevents_agent_selected_tenant(monkeypatch):
@@ -68,13 +71,15 @@ async def test_report_uses_local_connector_when_configured(monkeypatch):
         return {"rows": [], "limits": {"days": 90, "points": 50}}
 
     monkeypatch.setattr(retail_reports, "_connector_request", fake_connector)
-    await retail_reports.run_retail_report(
+    result = await retail_reports.run_retail_report(
         "top_products", tenant_id="shop-1", days=500, limit=500
     )
 
     assert captured["path"] == "/reports/run"
     assert captured["payload"]["days"] == 90
     assert captured["payload"]["limit"] == 50
+    assert result["source"] == "local_connector"
+    assert result["insights"] == ["No matching data was found for the selected period."]
 
 
 @pytest.mark.asyncio

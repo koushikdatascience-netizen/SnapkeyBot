@@ -39,6 +39,10 @@ class AppConfigResponse(BaseModel):
     max_upload_bytes: int
     voice_ready: bool
     live_agent_ready: bool
+    local_voice_ready: bool = False
+    local_voice_enabled: bool = False
+    local_voice_silence_ms: int = 650
+    local_voice_min_speech_ms: int = 350
     monitoring_camera_urls: list[str] = Field(default_factory=list)
     monitoring_screen_url: str = ""
 
@@ -64,3 +68,13 @@ class BrowserActionRequest(BaseModel):
 
 class SpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=5_000)
+
+
+class DesktopActionRequest(BaseModel):
+    action: str = Field(pattern="^(open|focus|minimize|close)$")
+    app: str = Field(default="madhushala", pattern="^[a-zA-Z0-9_-]{1,50}$")
+    confirmed: bool = False
+
+
+class LocalCommandRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2_000)

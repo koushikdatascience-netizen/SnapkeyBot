@@ -31,9 +31,14 @@ On the Snapkey Railway service, set:
 ```env
 REPORT_DATABASE_URL=${{Postgres.DATABASE_URL}}
 REPORT_TENANT_ID=YOUR_COMPANY_CODE
+REPORT_CONNECTOR_URL=
+ELEVENLABS_AGENT_ID=YOUR_ELEVENLABS_AGENT_ID
+ELEVENLABS_API_KEY=YOUR_ELEVENLABS_API_KEY
 ```
 
 Leave `REPORT_CONNECTOR_URL` empty so reports read from PostgreSQL.
+The production live assistant is available at `/live`. ElevenLabs handles the realtime conversation, while
+Snapkey client tools open bounded reports and pass the visible report insights back to the agent.
 
 From the Railway PostgreSQL service's **Connect** tab, copy its public connection URL. Use the public URL only on
 the local POS computer; Railway's private URL works only inside Railway.
@@ -74,3 +79,13 @@ SELECT * FROM snapkey_sync_status;
 SELECT COUNT(*) FROM snapkey_sales;
 SELECT COUNT(*) FROM snapkey_inventory;
 ```
+
+Then sign in at `https://YOUR-RAILWAY-DOMAIN/live` and try:
+
+```text
+Show today's sales report
+Show low stock items
+Show payment mix as a donut chart
+```
+
+Reports remain available from the last successful sync even when the local POS computer is off.

@@ -7,6 +7,7 @@ let recordingChunks = [];
 let maxUploadBytes = 15000000;
 let voiceReady = false;
 let liveAgentReady = false;
+let localVoiceReady = false;
 let responseMode = localStorage.getItem("responseMode") || "text";
 let currentAudio = null;
 let activityTimer = null;
@@ -38,8 +39,14 @@ async function loadConfig() {
     maxUploadBytes = config.max_upload_bytes || maxUploadBytes;
     voiceReady = config.voice_ready;
     liveAgentReady = config.live_agent_ready;
+    localVoiceReady = config.local_voice_ready;
     window.SnapkeyConfig = config;
-    setConnectionStatus(conciergeReady ? "Concierge online" : "Setup required", conciergeReady);
+    const livePath = ["/live", "/presenter"].includes(window.location.pathname);
+    const assistantReady = liveAgentReady || localVoiceReady;
+    setConnectionStatus(
+      livePath ? (assistantReady ? "Live assistant ready" : "Voice setup required") : (conciergeReady ? "Concierge online" : "Setup required"),
+      livePath ? assistantReady : conciergeReady,
+    );
     document.querySelector("#connection-warning").classList.toggle("hidden", conciergeReady);
     updateModeControls();
   } catch {
@@ -236,6 +243,21 @@ async function sendPrompt(event) {
   resizeComposer();
   clearAttachment();
   const pending = createPending();
+  const isLiveWorkspace = ["/live", "/presenter"].includes(window.location.pathname);
+  if (!attachment && isLiveWorkspace && window.SnapkeyLive?.executeWorkspaceCommand) {
+    try {
+      const result = await window.SnapkeyLive.executeWorkspaceCommand(text || "open purchase import");
+      pending.remove();
+      clearActivityStage();
+      createMessage("assistant", result.reply || "Done.");
+      if (responseMode === "voice" && window.SnapkeyLocal) window.SnapkeyLocal.speak(result.reply || "Done.");
+    } catch (reason) {
+      pending.remove();
+      clearActivityStage();
+      createMessage("assistant", reason.message);
+    }
+    return;
+  }
   showActivityStage(activeTaskPrompt);
   if (attachment) pending.querySelector("p").textContent = `Uploading ${attachment.name} securely`;
   const form = new FormData();
@@ -350,13 +372,17 @@ function updateModeControls() {
   document.querySelector("#text-mode").classList.toggle("active", responseMode === "text");
   const voiceButton = document.querySelector("#voice-mode");
   voiceButton.classList.remove("active");
-  voiceButton.disabled = !liveAgentReady;
-  voiceButton.title = liveAgentReady ? "Start a realtime voice conversation" : "Add ELEVENLABS_AGENT_ID to enable live conversation";
+  voiceButton.disabled = !(liveAgentReady || localVoiceReady);
+  voiceButton.title = liveAgentReady
+    ? "Start the ElevenLabs realtime voice assistant"
+    : localVoiceReady
+      ? "Start the local offline voice assistant"
+      : "Configure ElevenLabs or the local voice runtime to enable live conversation";
 }
 
 function openLiveAgent() {
-  if (!liveAgentReady) {
-    createMessage("assistant", "Live conversation is not configured yet. Add your ElevenLabs Agent ID.");
+  if (!(liveAgentReady || localVoiceReady)) {
+    createMessage("assistant", "Live conversation is not configured yet. Configure ElevenLabs or enable the local voice runtime.");
     return;
   }
   document.querySelector("#live-agent").classList.remove("hidden");
