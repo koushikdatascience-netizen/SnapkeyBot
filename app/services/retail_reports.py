@@ -16,11 +16,11 @@ REPORTS = {
         "title": "Sales summary",
         "chart": "bar",
         "sql": """
-            SELECT DATE(sold_at) AS label, ROUND(SUM(net_amount), 2) AS value
-            FROM snapkey_sales
-            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
-            GROUP BY DATE(sold_at)
-            ORDER BY DATE(sold_at)
+            SELECT sale_date AS label, ROUND(SUM(net_sales), 2) AS value
+            FROM report_sales_daily
+            WHERE tenant_id = :tenant_id AND sale_date >= :start_date AND sale_date < :end_date
+            GROUP BY sale_date
+            ORDER BY sale_date
             LIMIT :limit
         """,
     },
@@ -28,9 +28,9 @@ REPORTS = {
         "title": "Top-selling products",
         "chart": "bar",
         "sql": """
-            SELECT product_name AS label, ROUND(SUM(quantity), 2) AS value
-            FROM snapkey_sales
-            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
+            SELECT product_name AS label, ROUND(SUM(sales_amount), 2) AS value
+            FROM report_product_sales_daily
+            WHERE tenant_id = :tenant_id AND sale_date >= :start_date AND sale_date < :end_date
             GROUP BY product_name
             ORDER BY value DESC
             LIMIT :limit
@@ -40,9 +40,9 @@ REPORTS = {
         "title": "Sales by category",
         "chart": "bar",
         "sql": """
-            SELECT category_name AS label, ROUND(SUM(net_amount), 2) AS value
-            FROM snapkey_sales
-            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
+            SELECT category_name AS label, ROUND(SUM(sales_amount), 2) AS value
+            FROM report_product_sales_daily
+            WHERE tenant_id = :tenant_id AND sale_date >= :start_date AND sale_date < :end_date
             GROUP BY category_name
             ORDER BY value DESC
             LIMIT :limit
@@ -53,8 +53,9 @@ REPORTS = {
         "chart": "bar",
         "sql": """
             SELECT product_name AS label, ROUND(stock_quantity, 2) AS value
-            FROM snapkey_inventory
-            WHERE tenant_id = :tenant_id AND stock_quantity <= reorder_level
+            FROM report_inventory_current
+            WHERE tenant_id = :tenant_id
+              AND stock_quantity <= CASE WHEN reorder_level > 0 THEN reorder_level ELSE 5 END
             ORDER BY stock_quantity ASC
             LIMIT :limit
         """,
@@ -63,10 +64,10 @@ REPORTS = {
         "title": "Sales by payment method",
         "chart": "donut",
         "sql": """
-            SELECT payment_method AS label, ROUND(SUM(amount), 2) AS value
-            FROM snapkey_payments
-            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
-            GROUP BY payment_method ORDER BY value DESC LIMIT :limit
+            SELECT transaction_type AS label, ROUND(SUM(transaction_amount), 2) AS value
+            FROM report_account_daily
+            WHERE tenant_id = :tenant_id AND transaction_date >= :start_date AND transaction_date < :end_date
+            GROUP BY transaction_type ORDER BY value DESC LIMIT :limit
         """,
     },
     "hourly_sales": {
@@ -84,20 +85,20 @@ REPORTS = {
         "title": "Average bill value",
         "chart": "line",
         "sql": """
-            SELECT DATE(sold_at) AS label, ROUND(AVG(net_amount), 2) AS value
-            FROM snapkey_bills
-            WHERE tenant_id = :tenant_id AND sold_at >= :start_date AND sold_at < :end_date
-            GROUP BY DATE(sold_at) ORDER BY label LIMIT :limit
+            SELECT sale_date AS label, ROUND(AVG(average_bill), 2) AS value
+            FROM report_sales_daily
+            WHERE tenant_id = :tenant_id AND sale_date >= :start_date AND sale_date < :end_date
+            GROUP BY sale_date ORDER BY label LIMIT :limit
         """,
     },
     "purchase_trend": {
         "title": "Purchase trend",
         "chart": "line",
         "sql": """
-            SELECT DATE(purchased_at) AS label, ROUND(SUM(net_amount), 2) AS value
-            FROM snapkey_purchases
-            WHERE tenant_id = :tenant_id AND purchased_at >= :start_date AND purchased_at < :end_date
-            GROUP BY DATE(purchased_at) ORDER BY label LIMIT :limit
+            SELECT purchase_date AS label, ROUND(SUM(purchase_amount), 2) AS value
+            FROM report_purchase_daily
+            WHERE tenant_id = :tenant_id AND purchase_date >= :start_date AND purchase_date < :end_date
+            GROUP BY purchase_date ORDER BY label LIMIT :limit
         """,
     },
     "stock_by_category": {
@@ -105,7 +106,7 @@ REPORTS = {
         "chart": "bar",
         "sql": """
             SELECT category_name AS label, ROUND(SUM(stock_quantity), 2) AS value
-            FROM snapkey_inventory WHERE tenant_id = :tenant_id
+            FROM report_inventory_current WHERE tenant_id = :tenant_id
             GROUP BY category_name ORDER BY value DESC LIMIT :limit
         """,
     },
@@ -116,6 +117,26 @@ REPORTS = {
             SELECT customer_name AS label, ROUND(visit_count, 2) AS value
             FROM snapkey_customers WHERE tenant_id = :tenant_id
             ORDER BY visit_count DESC LIMIT :limit
+        """,
+    },
+    "supplier_performance": {
+        "title": "Supplier performance",
+        "chart": "bar",
+        "sql": """
+            SELECT supplier_name AS label, ROUND(SUM(purchase_amount), 2) AS value
+            FROM report_supplier_daily
+            WHERE tenant_id = :tenant_id AND purchase_date >= :start_date AND purchase_date < :end_date
+            GROUP BY supplier_name ORDER BY value DESC LIMIT :limit
+        """,
+    },
+    "account_summary": {
+        "title": "Accounting summary",
+        "chart": "bar",
+        "sql": """
+            SELECT transaction_type AS label, ROUND(SUM(transaction_amount), 2) AS value
+            FROM report_account_daily
+            WHERE tenant_id = :tenant_id AND transaction_date >= :start_date AND transaction_date < :end_date
+            GROUP BY transaction_type ORDER BY value DESC LIMIT :limit
         """,
     },
 }
@@ -239,7 +260,10 @@ async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
                     WHERE table_schema = 'public'
                       AND table_name IN (
                           'snapkey_sales', 'snapkey_inventory', 'snapkey_bills',
-                          'snapkey_payments', 'snapkey_purchases', 'snapkey_customers'
+                          'snapkey_payments', 'snapkey_purchases', 'snapkey_customers',
+                          'report_sales_daily', 'report_product_sales_daily',
+                          'report_inventory_current', 'report_purchase_daily',
+                          'report_supplier_daily', 'report_account_daily'
                       )
                     """
                 )
@@ -253,6 +277,9 @@ async def report_connection_diagnostics(tenant_id: str) -> dict[str, Any]:
                     {
                         "snapkey_sales", "snapkey_inventory", "snapkey_bills",
                         "snapkey_payments", "snapkey_purchases", "snapkey_customers",
+                        "report_sales_daily", "report_product_sales_daily",
+                        "report_inventory_current", "report_purchase_daily",
+                        "report_supplier_daily", "report_account_daily",
                     }
                     - set(views)
                 ),

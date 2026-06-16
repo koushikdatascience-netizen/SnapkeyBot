@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, chat, integrations, local_voice, operator, tools, voice
+from app.api import auth, chat, integrations, local_agent, local_voice, operator, tools, voice
 from app.config import get_settings
 from app.database import create_tables
 from app.schemas import AppConfigResponse
@@ -37,6 +37,7 @@ app.include_router(chat.router, prefix="/api")
 app.include_router(operator.router, prefix="/api")
 app.include_router(voice.router, prefix="/api")
 app.include_router(local_voice.router, prefix="/api")
+app.include_router(local_agent.router, prefix="/api")
 app.include_router(integrations.router, prefix="/api")
 
 static_dir = Path(__file__).parent / "static"
@@ -69,6 +70,7 @@ async def app_config() -> AppConfigResponse:
         live_agent_ready=live_agent_ready(),
         local_voice_ready=local_voice_ready(),
         local_voice_enabled=settings.local_voice_enabled,
+        local_agent_enabled=settings.local_agent_enabled,
         local_voice_silence_ms=settings.local_voice_silence_ms,
         local_voice_min_speech_ms=settings.local_voice_min_speech_ms,
         monitoring_camera_urls=[

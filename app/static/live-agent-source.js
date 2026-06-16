@@ -178,6 +178,26 @@ async function handleAutomaticLocalCommand(text) {
   }
 }
 
+async function handleFreeLocalAgentCommand(text) {
+  if (!window.SnapkeyConfig?.local_agent_enabled || !window.SnapkeyUI?.isAuthenticated()) return false;
+  try {
+    const result = await window.SnapkeyUI.api("/local-agent/command", {
+      method: "POST",
+      body: JSON.stringify({ prompt: text, mode: "auto" }),
+    });
+    if (result.intent?.type === "help") return false;
+    if (result.workspace) renderLiveWorkspace(result.workspace);
+    updateAgentContext(
+      `Snapkey's free local agent completed a ${result.intent?.type || "workspace"} action. ` +
+      `Result: ${result.reply || "ready"}. Explain only what the workspace confirms.`
+    );
+    return result;
+  } catch (error) {
+    updateAgentContext(`The free local agent could not complete the request because: ${error?.message || "local agent error"}.`);
+    return false;
+  }
+}
+
 function parsedArguments(value) {
   if (!value) return {};
   if (typeof value === "object") return value;
@@ -327,14 +347,16 @@ async function navigateActiveBrowser(url) {
 
 function retailReportIntent(text) {
   const value = text.toLowerCase();
-  if (!/\b(report|sales|stock|products|category|categories|inventory|payment|cash|card|upi|hourly|rush|average bill|purchase|customer|visits)\b/.test(value)) return null;
+  if (!/\b(report|sales|stock|products|category|categories|inventory|payment|cash|card|upi|hourly|rush|average bill|purchase|supplier|vendor|account|transaction|expense|customer|visits)\b/.test(value)) return null;
   let reportName = "sales_summary";
   if (/\b(low stock|reorder|inventory)\b/.test(value)) reportName = "low_stock";
   else if (/\b(top|best|selling).*(product|item)|\bproduct.*(top|best|selling)\b/.test(value)) reportName = "top_products";
   else if (/\b(payment|cash|card|upi)\b/.test(value)) reportName = "payment_mix";
   else if (/\b(hourly|rush|busy hour|peak hour)\b/.test(value)) reportName = "hourly_sales";
   else if (/\baverage bill|avg bill|bill value\b/.test(value)) reportName = "average_bill";
+  else if (/\b(supplier|vendor)\b/.test(value)) reportName = "supplier_performance";
   else if (/\bpurchase/.test(value)) reportName = "purchase_trend";
+  else if (/\b(account|transaction|expense)\b/.test(value)) reportName = "account_summary";
   else if (/\b(customer|visits)\b/.test(value)) reportName = "customer_visits";
   else if (/\bstock.*categor|categor.*stock\b/.test(value)) reportName = "stock_by_category";
   else if (/\bcategor/.test(value)) reportName = "category_sales";
@@ -1103,6 +1125,7 @@ window.startLiveConversation = async function startLiveConversation() {
           handleAutomaticYouTubeIntent(text);
           handleAutomaticBrowserIntent(text);
           handleAutomaticLocalCommand(text);
+          handleFreeLocalAgentCommand(text);
         }
       },
       onModeChange: mode => {
@@ -1150,6 +1173,8 @@ window.SnapkeyLive = {
   setWorkspaceVisible,
   requestConfirmation,
   executeWorkspaceCommand: async text => {
+    const freeAgent = await handleFreeLocalAgentCommand(text);
+    if (freeAgent) return { reply: freeAgent.reply || "The local agent workspace is ready." };
     const local = await handleAutomaticLocalCommand(text);
     if (local) return { reply: "The local action is complete." };
     if (handleAutomaticMediaControl(text)) return { reply: "Media control completed." };

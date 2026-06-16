@@ -41,6 +41,7 @@ class AppConfigResponse(BaseModel):
     live_agent_ready: bool
     local_voice_ready: bool = False
     local_voice_enabled: bool = False
+    local_agent_enabled: bool = True
     local_voice_silence_ms: int = 650
     local_voice_min_speech_ms: int = 350
     monitoring_camera_urls: list[str] = Field(default_factory=list)
@@ -78,3 +79,8 @@ class DesktopActionRequest(BaseModel):
 
 class LocalCommandRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=2_000)
+
+
+class LocalAgentCommandRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2_000)
+    mode: str = Field(default="auto", pattern="^(auto|text|voice)$")

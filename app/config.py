@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     local_tts_sapi_voice: str = ""
     local_voice_silence_ms: int = 650
     local_voice_min_speech_ms: int = 350
+    local_agent_enabled: bool = True
+    local_agent_llm_base_url: str = ""
+    local_agent_llm_model: str = ""
+    local_agent_timeout_seconds: int = 20
     madhushala_exe_path: str = ""
     madhushala_process_name: str = "Madhushala Ultimate"
     desktop_apps_json: str = ""
